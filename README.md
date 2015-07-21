@@ -6,6 +6,10 @@
 
 Check out quick introduction on https://github.com/groakat/engaged_hackathon/blob/master/notebooks/core/AzurePipeline.ipynb
 
+## Data
+
+Please share data in the separate data repository: https://github.com/groakat/engaged_hackathon_data
+
 ## Chat
 https://hack.chat/?engag3d
 
