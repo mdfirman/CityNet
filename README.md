@@ -15,6 +15,7 @@ https://hack.chat/?engag3d
 
 If necessaary, use one room for each group each group
 
+### structure groups
 - data
     - https://hack.chat/?engag3d-data
 - features
@@ -23,11 +24,13 @@ If necessaary, use one room for each group each group
     - https://hack.chat/?engag3d-detection
 - classification
     - https://hack.chat/?engag3d-classification
-- document
+
+# task-forces
+- general
     - https://hack.chat/?engag3d-general
-- data
-    - https://hack.chat/?engag3d-circade
-- features
+- circades
+    - https://hack.chat/?engag3d-circades
+- bats
     - https://hack.chat/?engag3d-bats
 
 
