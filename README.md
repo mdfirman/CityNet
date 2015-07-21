@@ -2,7 +2,7 @@
 
 ## Install
 
-`pip install pip install https://github.com/groakat/engaged_hackathon/archive/master.zip`
+`pip install pip install -U https://github.com/groakat/engaged_hackathon/archive/master.zip`
 
 `from engaded.core import AzurePipeline as AP`
 
