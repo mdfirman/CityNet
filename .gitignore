@@ -75,3 +75,5 @@ target/
 
 *.*~
 *.ipynb_checkpoints*
+
+*.xlsx
