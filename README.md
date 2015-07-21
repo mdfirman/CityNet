@@ -4,7 +4,7 @@
 
 `pip install pip install -U https://github.com/groakat/engaged_hackathon/archive/master.zip`
 
-`from engaded.core import AzurePipeline as AP`
+Check out quick introduction on https://github.com/groakat/engaged_hackathon/blob/master/notebooks/core/AzurePipeline.ipynb
 
 ## Chat
 https://hack.chat/?engag3d
