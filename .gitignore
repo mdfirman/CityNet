@@ -74,4 +74,4 @@ target/
 *.pkl
 
 *.*~
-
+*.ipynb_checkpoints*
