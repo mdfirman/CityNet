@@ -24,7 +24,11 @@ If necessaary, use one room for each group each group
 - classification
     - https://hack.chat/?engag3d-classification
 - document
-    - https://hack.chat/?engag3d-doc
+    - https://hack.chat/?engag3d-general
+- data
+    - https://hack.chat/?engag3d-circade
+- features
+    - https://hack.chat/?engag3d-bats
 
 
  ## Folders
