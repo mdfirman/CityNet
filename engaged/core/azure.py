@@ -11,10 +11,10 @@ def meta_to_excel(meta, filename=None):
 
     import pandas as pd
     df = pd.DataFrame(meta)
-    df.to_excel('meta.xlsx')
+    df.to_excel(filename)
     
 
-def meta_to_excel(filename=None):
+def excel_to_meta(filename=None):
     """
     meta (dict(dict)):
         meta data as used in AzurePipeline
@@ -26,5 +26,5 @@ def meta_to_excel(filename=None):
         filename = 'meta.xlsx'
 
     import pandas as pd
-    return pd.read_excel('test.xlsx').to_dict()
+    return pd.read_excel(filename).to_dict()
 
