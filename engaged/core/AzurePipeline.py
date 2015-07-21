@@ -154,14 +154,19 @@ class AzurePipeline(object):
         """ dump DataFrame out to cache """
         filename = self.get_df_cache_file(func)
         self.df.to_pickle(filename)
-    
-    
+
+
     def load_from_cache(self, func):
         """ load previous computation from cache """
         filename = self.get_df_cache_file(func)
         self.df = pd.read_pickle(filename)
-        
-        
+
+
+    def cache_exists(self, func):
+        filename = self.get_df_cache_file(func)
+        return os.path.exists(filename)
+
+
     def apply(self, func, args=None):
         """ apply func to pipeline, using complementary args if necessary """
         if args:
@@ -172,12 +177,12 @@ class AzurePipeline(object):
         # side effects are taking place
         data_unchanged = self.is_data_unchanged(func)
         func_unchanged = self.is_func_unchanged(func)
-        
-        if not data_unchanged or not func_unchanged:
-            self.df, self.meta = func(self.df, self.meta,)        
-            self.cache(func)
-        else:
+
+        if data_unchanged and func_unchanged and self.cache_exists(func):
             self.load_from_cache(func)
-            
+        else:
+            self.df, self.meta = func(self.df, self.meta,)
+            self.cache(func)
+
         self.func_history += [func.__name__]
         
