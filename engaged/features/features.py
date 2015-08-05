@@ -29,6 +29,7 @@ def small_spectrogram(spec):
     im_norm = (spec - spec.mean()) / spec.var()
     return skimage.transform.resize(im_norm, (10, 10)).flatten()
 
+
 def small_spectrogram_max_pooling(spec):
     """
     Using code adapated from:
@@ -64,6 +65,12 @@ def frequency_max_pooling(spec, normalise=True):
 
     return np.hstack((A, B, C))
 
+
+def bow_hist(spec, bow_hist):
+    """
+    uses the bow_hist to compute a histogram
+    """
+    return
 
 
 def max_bins(spec):

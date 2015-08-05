@@ -3,16 +3,16 @@ import numpy as np
 def spectrogram(wave, sampling_rate, nfft, window_width, overlap, HPF=None, LPF=None, window_type='hamming'):
     """
     Compute spectrogram and compute log.
-    
+
     window_width in ms
     overlap is the stepsize in ms
     nfft is the number of frequency bins
     HPF is the high pass filter parameter
     LPF is the low pass filter parameter
-    
+
     Roughly adapted from here:
     https://mail.python.org/pipermail/chicago/2010-December/007314.html
-    
+
     TODO - high pass and low pass filters
     """
 
