@@ -3,7 +3,7 @@ from scipy.io import wavfile
 import frequency
 import features
 from scipy.ndimage import measurements
-
+# import matplotlib.pyplot as plt
 
 class TimeSeries(object):
     """
@@ -38,6 +38,15 @@ class TimeSeries(object):
             return None
         else:
             return int(float(time) / self.sample_rate)
+
+    def position_to_time(self, pos):
+        """
+        Converts a time to a position in the audio signal
+        """
+        if pos is None:
+            return None
+        else:
+            return float(pos) * self.sample_rate
 
     def get_length(self):
         return self.series.shape[0] / self.sample_rate
@@ -77,11 +86,33 @@ class Spectrogram(TimeSeries):
         self.window_width = options['window_width']
         self.overlap = options['overlap']
 
-        self.series = frequency.spectrogram(wave_in.series, wave_in.sample_rate, **options).T
-        self.sample_rate = options['window_width']
+        self.series, self.sample_rate = \
+            frequency.spectrogram(wave_in.series, wave_in.sample_rate, **options)
+        self.series = self.series.T
+        # self.sample_rate = 1 / float(options['window_width'] - 2*options['overlap'])
 
         if hasattr(wave_in, 'annotations'):
             self.annotations = wave_in.annotations
+
+    def plot(self, max_time=None, ax='sds'):
+
+        max_pos = self.time_to_position(max_time)
+        ax.imshow(self.series.T[:, :max_pos], aspect=0.1)
+        ax.invert_yaxis()
+
+        # sort out where to put the tick labels (which should be in seconds)
+        xlim = ax.get_xlim()
+        min_time = self.position_to_time(xlim[0])
+        max_time = self.position_to_time(xlim[1])
+
+        time_labels = np.arange(int(min_time), int(np.ceil(max_time)), 5)
+
+        pos_labels = [self.time_to_position(lab) for lab in time_labels]
+        ax.set_xticks(pos_labels)
+        ax.set_xticklabels(time_labels)
+
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Frequency (TODO - sort out this scaling')
 
 
 class LabelledTimeseries(TimeSeries):
@@ -155,4 +186,19 @@ class LabelledWave(Wave, LabelledTimeseries):
 
 
 class LabelledSpectrogram(Spectrogram, LabelledTimeseries):
-    pass
+
+    def plot_annotations(self, max_time=None, ax='sd'):
+
+        self.plot(max_time, ax=ax)
+
+        for annotation in self.annotations:
+            if annotation['LabelEndTime_Seconds'] < max_time:
+                x1 = self.time_to_position(annotation['LabelStartTime_Seconds'])
+                x2 = self.time_to_position(annotation['LabelEndTime_Seconds'])
+                y1 = 300
+                y2 = 400
+                print x1, annotation['Label']
+                ax.plot([x1, x2, x2, x1, x1], [y1, y1, y2, y2, y1])
+                ax.text(x1, y1, annotation['Label'])
+            # print annotation, start_pos, end_pos
+

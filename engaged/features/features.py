@@ -199,3 +199,30 @@ def peak_map(spec, patch_hww=6, rescale_val=0.5):
 
     return np.hstack((np.ravel(patch), np.max(spec)))
 
+
+# extract the 1d patches from the test file
+def extract_1d_patches(array, locations, hww):
+    """
+    Extract vertical patches from the array, at the locations given.
+    Each slice has a half window width hww
+
+    Returns an array of shape:
+    (len(locations), array.shape[0], hww*2+1)
+    """
+    # pad the array to account for overspill
+    offset_idxs_np = np.array(locations) + hww
+    extra1 = np.tile(array[:, 0], (hww, 1)).T
+    extra2 = np.tile(array[:, -1], (hww, 1)).T
+    a_temp = np.hstack((extra1, array, extra2))
+
+    # set up the array of index locations to extract from
+    idxs = [offset_idxs_np]
+    for offset in range(1, hww+1):
+        idxs.insert(0, offset_idxs_np-offset)
+        idxs.append(offset_idxs_np+offset)
+    new_idx = np.vstack(idxs).T.ravel()
+
+    # extract the patches and do the appropriate reshapgin
+    new_shape = (array.shape[0], offset_idxs_np.shape[0], hww*2 + 1)
+    to_return = a_temp[:, new_idx].reshape(new_shape).transpose((1, 0, 2))
+    return to_return
