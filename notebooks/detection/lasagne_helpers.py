@@ -127,9 +127,3 @@ def build_cnn(
     return network
 
 
-def normalised_accuracy(gt, pred):
-    accs = 0
-    for target in [0, 1]:
-        idxs = gt == target
-        accs += metrics.accuracy_score(gt[idxs], pred[idxs]>0.5)
-    return accs / 2
