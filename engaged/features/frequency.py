@@ -1,6 +1,6 @@
 import numpy as np
 
-def spectrogram(wave, sampling_rate, nfft, overlap, HPF=None,
+def spectrogram(wave, sampling_rate, nfft, spec_sample_rate, HPF=None,
     LPF=None, window_type='hamming', convert_to_mel=False, mel_bins=50,
     stowell_normalise=False):
     """
@@ -18,18 +18,19 @@ def spectrogram(wave, sampling_rate, nfft, overlap, HPF=None,
     """
 
     # convert step sizes in ms into step sizes in 'pixels'
-    noverlap = int(sampling_rate * overlap)
+    # noverlap = int(sampling_rate * overlap)
     # nwin  = int(sampling_rate * window_width)
     nwin = np.nan
-    step = nfft - noverlap
+    # convert the spectrogram sample rate to a stepsize... using the wav sampling rate etc.
+    step = int(sampling_rate / spec_sample_rate)
 
-    if noverlap >= nfft:
-        raise Exception('Overlap is too high relative to the nfft!')
+    # if noverlap >= nfft:
+        # raise Exception('Overlap is too high relative to the nfft!')
 
     # Get all windows of x with length n as a single array, using strides to avoid data duplication
 
     # shape = (nfft, (wave.shape[-1]-noverlap)//step)
-    shape = (nfft, (wave.shape[-1]-noverlap)//step)
+    shape = (nfft, (wave.shape[-1]-nfft-step)//step)
     strides = (wave.strides[0], step*wave.strides[0])
 
     x_wins = np.lib.stride_tricks.as_strided(wave, shape=shape, strides=strides)
@@ -44,22 +45,8 @@ def spectrogram(wave, sampling_rate, nfft, overlap, HPF=None,
     fft_mat = np.fft.fft(x_wins_ham, n=int(nfft), axis=0)[:(nfft/2+1), :]
 
     # log magnitude
-    fft_mat_lm = np.log(np.abs(fft_mat))
+    return np.log(np.abs(fft_mat))
 
-    if HPF is not None or LPF is not None:
-        # TODO - high pass and low pass filters here
-        raise Exception('Not implemented yet')
-
-    if convert_to_mel:
-        out_spec = spec_to_mel(fft_mat_lm, sampling_rate, mel_bins)
-    else:
-        out_spec = fft_mat_lm
-
-    if stowell_normalise:
-        out_spec -= np.median(out_spec, axis=1)[:, None]
-        out_spec[out_spec<0] = 0
-
-    return out_spec, float(sampling_rate) / float(float(nwin) - 2*float(step))
 
 def spec_to_mel(spec, audio_sample_rate, num_mel_bands):
     """
