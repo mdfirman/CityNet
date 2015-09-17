@@ -1,14 +1,13 @@
 import numpy as np
 
-def spectrogram(wave, sampling_rate, nfft, window_width, overlap, HPF=None,
+def spectrogram(wave, sampling_rate, nfft, overlap, HPF=None,
     LPF=None, window_type='hamming', convert_to_mel=False, mel_bins=50,
     stowell_normalise=False):
     """
     Compute spectrogram and compute log.
 
-    window_width in ms
     overlap is the stepsize in ms
-    nfft is the number of frequency bins
+    nfft is the number of frequency bins, also the width of each strip to be extracted...
     HPF is the high pass filter parameter
     LPF is the low pass filter parameter
 
@@ -19,13 +18,20 @@ def spectrogram(wave, sampling_rate, nfft, window_width, overlap, HPF=None,
     """
 
     # convert step sizes in ms into step sizes in 'pixels'
-    nstep = int(sampling_rate * overlap)
-    nwin  = int(sampling_rate * window_width)
+    noverlap = int(sampling_rate * overlap)
+    # nwin  = int(sampling_rate * window_width)
+    nwin = np.nan
+    step = nfft - noverlap
+
+    if noverlap >= nfft:
+        raise Exception('Overlap is too high relative to the nfft!')
 
     # Get all windows of x with length n as a single array, using strides to avoid data duplication
-    #shape = (nfft, len(range(nfft, len(x), nstep)))
-    shape = (nfft, ((wave.shape[0] - nfft - 1)/nstep)+1)
-    strides = (wave.itemsize, nstep*wave.itemsize)
+
+    # shape = (nfft, (wave.shape[-1]-noverlap)//step)
+    shape = (nfft, (wave.shape[-1]-noverlap)//step)
+    strides = (wave.strides[0], step*wave.strides[0])
+
     x_wins = np.lib.stride_tricks.as_strided(wave, shape=shape, strides=strides)
 
     # Apply hamming window
@@ -53,7 +59,7 @@ def spectrogram(wave, sampling_rate, nfft, window_width, overlap, HPF=None,
         out_spec -= np.median(out_spec, axis=1)[:, None]
         out_spec[out_spec<0] = 0
 
-    return out_spec, float(sampling_rate) / float(float(nwin) - 2*float(nstep))
+    return out_spec, float(sampling_rate) / float(float(nwin) - 2*float(step))
 
 def spec_to_mel(spec, audio_sample_rate, num_mel_bands):
     """
