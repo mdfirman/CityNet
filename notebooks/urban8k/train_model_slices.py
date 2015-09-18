@@ -8,6 +8,7 @@ import scipy.io
 import time
 import cPickle as pickle
 from copy import deepcopy
+import skimage.transform
 
 # CNN bits
 import theano
@@ -27,12 +28,12 @@ theano.config.profile = False
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 # setting parameters!!
-base_path = '/home/michael/projects/engaged_hackathon_data/urban_8k/'
-split = 1
+base_path = '/media/michael/Seagate/urban8k/'
+split = 2
 slice_width = 128
 slices = True
 
-num_epochs = 1000
+num_epochs = 100
 
 small_dataset = False
 
@@ -42,12 +43,12 @@ minibatch_size = 128 # optimise
 augment_data = True
 
 # what size will the CNN get ultimately? - optimise this!
-# desired_size = (128, 256)
+network_input_size = (128, slice_width)
 
 
 def load_data():
     # load in the data
-    loadpath = base_path + 'splits_for_slices/split' + str(split) + '.pkl'
+    loadpath = base_path + 'splits_128/split' + str(split) + '.pkl'
     data = pickle.load(open(loadpath))
 
     num_classes = np.unique(data['train_y']).shape[0]
@@ -69,7 +70,6 @@ def load_data():
             data[data_type + 'X'] = [data[data_type + 'X'][temp_idx] for temp_idx in to_use]
             data[data_type + 'y'] = data[data_type + 'y'][to_use]
 
-
     return data, num_classes
 
 
@@ -79,80 +79,50 @@ data, num_classes = load_data()
 def build_cnn(input_var=None):
     # As a third model, we'll create a CNN of two convolution + pooling stages
     # and a fully-connected hidden layer in front of the output layer.
+    input_dropout = 0.18
+    filter_sizes = 5
+    num_filters = 50
+    num_filter_layers = 2
+    pool_size_x = 4
+    pool_size_y = 4
+    dense_dropout = 0.5
+    num_dense_layers = 2
+    num_dense_units = 800
 
-    # Input layer, as usual:
-    im_height, im_width = data['train_X'][0].shape
-    print im_width, im_height
-    if slices:
-        network_im_width = slice_width
-    else:
-        network_im_width = im_width
+    nonlin_choice = lasagne.nonlinearities.very_leaky_rectify
 
-    data_shape = (None, 1, im_height, network_im_width)
-    print "Creating network of shape ", data_shape
+    # Input layer, followed by dropout
+    network_shape = (None, 1, network_input_size[0], network_input_size[1])
+    print "Making network of input size ", network_shape
+    network = layers.InputLayer(shape=network_shape, input_var=input_var)
+    network = layers.dropout(network, p=input_dropout)
 
-    network = layers.InputLayer(shape=data_shape, input_var=input_var)
-    # This time we do not apply input dropout, as it tends to work less well
-    # for convolutional layers.
-    network = layers.dropout(network, p=0.18)
+    for _ in range(num_filter_layers):
 
-    # Convolutional layer with 32 kernels of size 5x5. Strided and padded
-    # convolutions are supported as well; see the docstring.
-    # network = layers.cuda_convnet.Conv2DCCLayer(
-    #         network, num_filters=32, filter_size=(3, 3),
-    #         # stride=(2, 2),
-    #         nonlinearity=lasagne.nonlinearities.very_leaky_rectify,
-    #         W=lasagne.init.GlorotUniform())
-
-    # network = layers.Conv2DLayer(
-    #         network, num_filters=32, filter_size=(3, 3),
-    #         # stride=(2, 2),
-    #         nonlinearity=lasagne.nonlinearities.very_leaky_rectify,
-    #         W=lasagne.init.GlorotUniform())
-
-    network = layers.Conv2DLayer(
-            network, num_filters=64, filter_size=(3, 3),
+        # see also: layers.cuda_convnet.Conv2DCCLayer
+        network = layers.Conv2DLayer(
+            network,
+            num_filters=num_filters,
+            filter_size=(filter_sizes, filter_sizes),
+            # pad = (2, 2),
             # stride=(2, 2),
-            nonlinearity=lasagne.nonlinearities.very_leaky_rectify,
+            nonlinearity=nonlin_choice,
             W=lasagne.init.GlorotUniform())
 
-    # network = layers.Conv2DLayer(
-    #         network, num_filters=32, filter_size=(3, 3),
-    #         # stride=(2, 2),
-    #         nonlinearity=lasagne.nonlinearities.very_leaky_rectify,
-    #         W=lasagne.init.GlorotUniform())
-    # Expert note: Lasagne provides alternative convolutional layers that
-    # override Theano's choice of which implementation to use; for details
-    # please see http://lasagne.readthedocs.org/en/latest/user/tutorial.html.
+        network = layers.MaxPool2DLayer(
+            network,
+            pool_size=(pool_size_x, pool_size_y))
 
-    # Max-pooling layer of factor 2 in both dimensions:
-#     network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
-    network = layers.MaxPool2DLayer(network, pool_size=(4, 4))
+    for _ in range(num_dense_layers):
 
-    # Another convolution with 32 5x5 kernels, and another 2x2 pooling:
-    network = layers.Conv2DLayer(
-            network, num_filters=64, filter_size=(3,3),
-            # stride=(2, 2),
-            nonlinearity=lasagne.nonlinearities.very_leaky_rectify,
-            W=lasagne.init.GlorotUniform())
-
-    network = layers.MaxPool2DLayer(network, pool_size=(4, 4))
-
-    # A fully-connected layer of 256 units with 50% dropout on its inputs:
-    network = layers.DenseLayer(
-            layers.dropout(network, p=.5),
-            num_units=1024,
-            nonlinearity=lasagne.nonlinearities.very_leaky_rectify)
-
-    # A fully-connected layer of 256 units with 50% dropout on its inputs:
-    network = layers.DenseLayer(
-            layers.dropout(network, p=.5),
-            num_units=1024,
-            nonlinearity=lasagne.nonlinearities.very_leaky_rectify)
+        network = layers.DenseLayer(
+            layers.dropout(network, p=dense_dropout),
+            num_units=num_dense_units,
+            nonlinearity=nonlin_choice)
 
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
     network = layers.DenseLayer(
-            layers.dropout(network, p=.5),
+            layers.dropout(network, p=dense_dropout),
             num_units=num_classes,
             nonlinearity=lasagne.nonlinearities.softmax)
 
@@ -186,8 +156,7 @@ def prepare_network():
     # updates = lasagne.updates.nesterov_momentum(
             # loss, params, learning_rate=0.00249, momentum=0.5)
     updates = lasagne.updates.rmsprop(
-             loss, params, learning_rate=0.000249)
-
+             loss, params, learning_rate=0.00025) #0.000249
 
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
@@ -217,14 +186,17 @@ def prepare_network():
 
 def extract_slice(spec):
     # takes a single random slice from a single spectrogram
+    assert slice_width % 2 == 0
     hww = slice_width / 2
     if spec.shape[1] > 2*hww:
         idx = np.random.randint(hww, spec.shape[1]-hww)
+        # print "Not tiling", spec[:, idx-hww:idx+hww].shape
         return spec[:, idx-hww:idx+hww]
     else:
         # tile wrap the spec and return the whole thing!
         num_tiles = np.ceil(float(slice_width) / spec.shape[1])
         tiled = np.tile(spec, (1, num_tiles))
+        # print "Tiling", tiled[:, :slice_width].shape
         return tiled[:, :slice_width]
 
 
@@ -240,9 +212,10 @@ def augment_slice(slice_in):
     does some stuff to a single slice example to augment the dataset
     '''
 
-    this_slice = slice_in.copy()
+    this_slice = slice_in.copy().astype(np.float64)
 
     # if the spectrogram is too small, consider either tiling it, or padding with zeros
+    # todo
 
     # rolling the spectrogram
     n = slice_in.shape[1]
@@ -251,7 +224,8 @@ def augment_slice(slice_in):
 
     # # rotating
     # angle = np.random.rand() * 2
-    # this_slice = skimage.transform.rotate(this_slice, angle=angle, mode='nearest')
+    # this_slice = skimage.transform.rotate(
+    #     this_slice, angle=angle, mode='nearest')
 
     # # cropping in height - specify crop maximums as fractions
     # max_crop_top = 0.1
@@ -268,19 +242,17 @@ def augment_slice(slice_in):
     # this_slice = this_slice[:, left_amount:-right_amount]
 
     # # scaling
+    # this_slice = skimage.transform.resize(this_slice, network_input_size)
 
+    # volume ramping
+    min_vol_ramp = 0.8
+    max_vol_ramp = 1.2
+    start_vol = np.random.rand() * (max_vol_ramp - min_vol_ramp) + min_vol_ramp
+    end_vol = np.random.rand() * (max_vol_ramp - min_vol_ramp) + min_vol_ramp
+    vol_ramp = np.linspace(start_vol, end_vol, this_slice.shape[1])
+    this_slice = this_slice * vol_ramp[None, :]
 
-
-    # # volume ramping
-    # min_vol_ramp = 0.8
-    # max_vol_ramp = 1.2
-    # start_vol = np.random.rand() * (max_vol_ramp - min_vol_ramp) + min_vol_ramp
-    # end_vol = np.random.rand() * (max_vol_ramp - min_vol_ramp) + min_vol_ramp
-    # vol_ramp = np.linspace(start_vol, end_vol, this_slice.shape[1])
-    # this_slice = this_slice * vol_ramp[None, :]
-
-
-    return this_slice
+    return this_slice.astype(np.float32)
 
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
@@ -354,7 +326,7 @@ def iterate_balanced_minibatches_multiclass(inputs, targets, full_batchsize, shu
 
 def form_slices_validation_set(data):
 
-    max_validation_slices_per_spec = 10
+    max_validation_slices_per_spec = 1
 
     val_X = []
     val_y = []
@@ -362,7 +334,7 @@ def form_slices_validation_set(data):
     for this_x, this_y in zip(data['val_X'], data['val_y']):
 
         # choose how many slices to extract
-        how_many = this_x.shape[1] / 8
+        how_many = 1 #this_x.shape[1] / 8
         val_X += [extract_slice(this_x) for _ in range(how_many)]
         val_y += [this_y] * how_many
 
@@ -383,7 +355,7 @@ network, train_fn, predict_fn, val_fn = prepare_network()
 print "Starting training..."
 print "There will be %d minibatches per epoch" % (data['train_y'].shape[0] / (minibatch_size*num_classes))
 
-headerline = """     epoch   train loss   valid loss   train/val    valid acc     dur
+headerline = """     epoch   train loss   train/val   valid auc   valid acc     dur
    -------  -----------  -----------  -----------  -----------  -------"""
 print headerline,
 sys.stdout.flush()
@@ -406,6 +378,7 @@ for epoch in range(num_epochs):
         if count % 100 == 0:
             print '.',
         inputs, targets = batch
+        # print inputs.shape, targets.shape, inputs.max(), targets.max(), inputs.min(), targets.min(), inputs.dtype, targets.dtype
         train_loss += train_fn(inputs, targets)
         train_batches += 1
         sys.stdout.flush()
@@ -419,9 +392,10 @@ for epoch in range(num_epochs):
     y_gts = []
 
     # doing the normal validation
-    for batch in iterate_minibatches(val_X, val_y, int(minibatch_size)):
+    for batch in iterate_minibatches(val_X, val_y, int(minibatch_size/6)):
 
         inputs, targets = batch
+        # print inputs.shape, targets.shape
 
         err, acc = val_fn(inputs, targets)
         val_err += err
@@ -433,6 +407,8 @@ for epoch in range(num_epochs):
 
     class_predictions = np.argmax(np.vstack(y_preds), axis=1)
     mean_val_accuracy = metrics.accuracy_score(np.hstack(y_gts), class_predictions)
+
+    auc = metrics.roc_auc_score(np.hstack(y_gts), np.vstack(y_pred))
 
     val_loss = val_err / val_batches
 
@@ -458,12 +434,17 @@ for epoch in range(num_epochs):
     results_row = "\n" + \
         "     " + str(epoch).ljust(8) + \
         ("%0.06f" % (train_loss)).ljust(12) + \
-        ("%0.06f" % (0.0)).ljust(12) + \
         ("%0.06f" % (train_loss / val_loss)).ljust(12) + \
+        ("%0.06f" % (auc)).ljust(12) + \
         ("%0.06f" % (mean_val_accuracy)).ljust(10) + \
         ("%0.04f" % (time.time() - start_time)).ljust(10)
     print results_row,
     # sys.stdout.flush()
+
+    # let's try saving a confusion matrix on each run...
+    savepath = './conf_mat/%05d.mat' % epoch
+    cm = metrics.confusion_matrix(np.hstack(y_gts), class_predictions)
+    scipy.io.savemat(savepath, {'cm':cm})
 
     out_fid.write(results_row + "\n")
 
