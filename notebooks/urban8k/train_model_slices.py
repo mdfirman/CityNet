@@ -29,16 +29,16 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 # setting parameters!!
 base_path = '/media/michael/Seagate/urban8k/'
-split = 2
+split = 3
 slice_width = 128
 slices = True
 
-num_epochs = 100
+num_epochs = 500
 
 small_dataset = False
 
 # NOTE that the *actual* minibatch size will be something like num_classes*minibatch_size
-minibatch_size = 128 # optimise
+minibatch_size = 100 # optimise
 
 augment_data = True
 
@@ -60,7 +60,14 @@ def load_data():
 
     for key, val in data.iteritems():
         if not key.startswith('__'):
-            print key, len(val)
+            print key, len(val),
+
+        if key.endswith('_X'):
+            print val[0].shape
+            for idx in range(len(data[key])):
+                to_rem = np.median(data[key][idx], axis=1)[:, None]
+                data[key][idx] -= to_rem
+
 
     # doing small sample...
     if small_dataset:
@@ -69,6 +76,12 @@ def load_data():
             to_use = np.random.choice(num, 100, replace=False)
             data[data_type + 'X'] = [data[data_type + 'X'][temp_idx] for temp_idx in to_use]
             data[data_type + 'y'] = data[data_type + 'y'][to_use]
+
+    # print "Cheating"
+    # data['train_y'] = np.hstack((data['train_y'], data['val_y']))
+    # data['train_X'] = data['train_X'] + data['val_X']
+    # data['val_y'] = data['test_y']
+    # data['val_X'] = data['test_X']
 
     return data, num_classes
 
@@ -79,14 +92,14 @@ data, num_classes = load_data()
 def build_cnn(input_var=None):
     # As a third model, we'll create a CNN of two convolution + pooling stages
     # and a fully-connected hidden layer in front of the output layer.
-    input_dropout = 0.18
+    input_dropout = 0.1
     filter_sizes = 5
-    num_filters = 50
+    num_filters = 40
     num_filter_layers = 2
     pool_size_x = 4
     pool_size_y = 4
     dense_dropout = 0.5
-    num_dense_layers = 2
+    num_dense_layers = 3
     num_dense_units = 800
 
     nonlin_choice = lasagne.nonlinearities.very_leaky_rectify
@@ -154,7 +167,7 @@ def prepare_network():
     # Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
     params = lasagne.layers.get_all_params(network, trainable=True)
     # updates = lasagne.updates.nesterov_momentum(
-            # loss, params, learning_rate=0.00249, momentum=0.5)
+    #         loss, params, learning_rate=0.000249, momentum=0.5)
     updates = lasagne.updates.rmsprop(
              loss, params, learning_rate=0.00025) #0.000249
 
@@ -222,14 +235,14 @@ def augment_slice(slice_in):
     roll_amount = np.random.randint(n)
     this_slice = np.roll(this_slice, roll_amount, axis=1)
 
-    # # rotating
-    # angle = np.random.rand() * 2
-    # this_slice = skimage.transform.rotate(
-    #     this_slice, angle=angle, mode='nearest')
+    # rotating
+    angle = np.random.rand() * 2
+    this_slice = skimage.transform.rotate(
+        this_slice, angle=angle, mode='nearest')
 
     # # cropping in height - specify crop maximums as fractions
-    # max_crop_top = 0.1
-    # max_crop_bottom = 0.1
+    # max_crop_top = 0.05
+    # max_crop_bottom = 0.05
     # top_amount = max_crop_top * float(this_slice.shape[0])
     # bottom_amount = max_crop_bottom * float(this_slice.shape[0])
     # this_slice = this_slice[top_amount:-bottom_amount, :]
@@ -243,6 +256,10 @@ def augment_slice(slice_in):
 
     # # scaling
     # this_slice = skimage.transform.resize(this_slice, network_input_size)
+
+    # flipping
+    if np.random.rand() > 0.5:
+        this_slice = this_slice[:, ::-1]
 
     # volume ramping
     min_vol_ramp = 0.8
@@ -326,24 +343,45 @@ def iterate_balanced_minibatches_multiclass(inputs, targets, full_batchsize, shu
 
 def form_slices_validation_set(data):
 
-    max_validation_slices_per_spec = 1
-
     val_X = []
     val_y = []
 
-    for this_x, this_y in zip(data['val_X'], data['val_y']):
+    # for this_x, this_y in zip(data['val_X'], data['val_y']):
 
-        # choose how many slices to extract
-        how_many = 1 #this_x.shape[1] / 8
-        val_X += [extract_slice(this_x) for _ in range(how_many)]
-        val_y += [this_y] * how_many
+    #     # choose how many slices to extract
+    #     how_many = this_x.shape[1] / slice_width
+    #     val_X += [extract_slice(this_x) for _ in range(how_many)]
+    #     val_y += [this_y] * how_many
+    val_X = [tile_pad(xx, slice_width) for xx in data['val_X']]
 
-    val_y = np.hstack(val_y)
+    val_y = np.hstack(data['val_y'])
     val_X = form_correct_shape_array(val_X)
 
     print "validation set is of size ", val_X.shape, val_y.shape
 
     return val_X, val_y
+
+
+def tile_pad(this_slice, desired_width):
+    num_tiles = np.ceil(float(desired_width) / this_slice.shape[1])
+    tiled = np.tile(this_slice, (1, num_tiles))
+    return tiled[:, :desired_width]
+
+
+def force_slice_length(spec, location, slice_width):
+    '''
+    extract a slice from a specific location, but if there isn't enough spectrogram to
+    go around then maybe do something else... e.g. wrapping
+    '''
+    hww = slice_width / 2
+    to_return = spec[:, location-hww:location+hww]
+    if to_return.shape[1] == slice_width:
+        return to_return
+    else:
+        num_tiles = np.ceil(float(slice_width) / to_return.shape[1])
+        tiled = np.tile(to_return, (1, num_tiles))
+        # print "Tiling", tiled[:, :slice_width].shape
+        return tiled[:, :slice_width]
 
 
 
@@ -395,7 +433,6 @@ for epoch in range(num_epochs):
     for batch in iterate_minibatches(val_X, val_y, int(minibatch_size/6)):
 
         inputs, targets = batch
-        # print inputs.shape, targets.shape
 
         err, acc = val_fn(inputs, targets)
         val_err += err
@@ -408,23 +445,38 @@ for epoch in range(num_epochs):
     class_predictions = np.argmax(np.vstack(y_preds), axis=1)
     mean_val_accuracy = metrics.accuracy_score(np.hstack(y_gts), class_predictions)
 
-    auc = metrics.roc_auc_score(np.hstack(y_gts), np.vstack(y_pred))
+    auc = 0#metrics.roc_auc_score(np.hstack(y_gts), np.vstack(y_preds))
 
     val_loss = val_err / val_batches
 
-    # # now doing the per-slice validation...
+    # now doing the per-slice validation...
     # hww = slice_width/2
     # offset = 8
+    # print len(data['val_X']), data['val_y'].shape
+
+    # y_preds = []
+    # counter = 0
     # for this_val_x, this_val_y in zip(data['val_X'], data['val_y']):
-    #     slice_preds = []
-    #     for location in range(hww, this_val_x.shape[1], offset):
-    #         temp_X = form_correct_shape_array([this_val_x[:, location-hww:location+hww]])
-    #         print temp_X.shape
-    #         slice_preds.append(predict_fn(temp_X))
+    #     counter += 1
+    #     slices = []
+    #     locations = range(hww, this_val_x.shape[1]-hww, offset)
+
+    #     if len(locations) == 0:
+    #         locations = [hww]
+
+    #     for location in locations:
+    #         slices.append(force_slice_length(this_val_x, location, slice_width))
+
+    #     slice_preds = predict_fn(form_correct_shape_array(slices))
     #     all_slice_preds = np.vstack(slice_preds).mean(0)
 
-    #     y_preds.append(np.argmax(all_slice_preds))
-    # slice_val_accuracy = metrics.accuracy_score(data['val_y'], np.hstack(y_preds))
+    #     if all_slice_preds.shape[0] != 10:
+    #         import pdb; pdb.set_trace()
+
+    #     y_preds.append(all_slice_preds)
+
+    # slice_val_accuracy = metrics.accuracy_score(data['val_y'], np.argmax(np.vstack(y_preds), axis=1))
+    # print slice_val_accuracy
 
 
 
