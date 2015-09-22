@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import seaborn as sns
 import csv
 import os
 import sys
@@ -9,19 +10,18 @@ import time
 import cPickle as pickle
 from copy import deepcopy
 import skimage.transform
+from sklearn import metrics
+from sklearn.metrics import roc_curve, auc
 
 # CNN bits
 import theano
-import theano.tensor as T
-import lasagne
-# import lasagne.layers.cuda_convnet
-from lasagne import layers
 
 # for evaluation
 sys.path.append(os.path.expanduser('~/projects/engaged_hackathon/'))
-from engaged.features import evaluation
-from sklearn import metrics
-from sklearn.metrics import roc_curve, auc
+from engaged.features import evaluation, audio_utils, cnn_utils
+
+
+import urban8k_helpers as helpers
 
 # https://groups.google.com/forum/#!topic/lasagne-users/t_rMTLAtpZo
 theano.config.profile = False
@@ -32,169 +32,30 @@ base_path = '/media/michael/Seagate/urban8k/'
 split = 3
 slice_width = 128
 slices = True
-
 num_epochs = 500
-
 small_dataset = False
 
 # NOTE that the *actual* minibatch size will be something like num_classes*minibatch_size
 minibatch_size = 100 # optimise
-
 augment_data = True
+
+augment_options = {
+    'roll': True,
+    'rotate': False,
+    'flip': False,
+    'volume_ramp': False,
+    'normalise': False
+    }
 
 # what size will the CNN get ultimately? - optimise this!
 network_input_size = (128, slice_width)
 
+learning_rate = 0.00025
 
-def load_data():
-    # load in the data
-    loadpath = base_path + 'splits_128/split' + str(split) + '.pkl'
-    data = pickle.load(open(loadpath))
-
-    num_classes = np.unique(data['train_y']).shape[0]
-    print "There are %d classes " % num_classes
-    print np.unique(data['train_y'])
-    data['train_y'] = data['train_y'].ravel().astype(np.int32)
-    data['test_y'] = data['test_y'].ravel().astype(np.int32)
-    data['val_y'] = data['val_y'].ravel().astype(np.int32)
-
-    for key, val in data.iteritems():
-        if not key.startswith('__'):
-            print key, len(val),
-
-        if key.endswith('_X'):
-            print val[0].shape
-            for idx in range(len(data[key])):
-                to_rem = np.median(data[key][idx], axis=1)[:, None]
-                data[key][idx] -= to_rem
-
-
-    # doing small sample...
-    if small_dataset:
-        for data_type in ['train_', 'test_', 'val_']:
-            num = len(data[data_type + 'X'])
-            to_use = np.random.choice(num, 100, replace=False)
-            data[data_type + 'X'] = [data[data_type + 'X'][temp_idx] for temp_idx in to_use]
-            data[data_type + 'y'] = data[data_type + 'y'][to_use]
-
-    # print "Cheating"
-    # data['train_y'] = np.hstack((data['train_y'], data['val_y']))
-    # data['train_X'] = data['train_X'] + data['val_X']
-    # data['val_y'] = data['test_y']
-    # data['val_X'] = data['test_X']
-
-    return data, num_classes
-
-
-data, num_classes = load_data()
-
-
-def build_cnn(input_var=None):
-    # As a third model, we'll create a CNN of two convolution + pooling stages
-    # and a fully-connected hidden layer in front of the output layer.
-    input_dropout = 0.1
-    filter_sizes = 5
-    num_filters = 40
-    num_filter_layers = 2
-    pool_size_x = 4
-    pool_size_y = 4
-    dense_dropout = 0.5
-    num_dense_layers = 3
-    num_dense_units = 800
-
-    nonlin_choice = lasagne.nonlinearities.very_leaky_rectify
-
-    # Input layer, followed by dropout
-    network_shape = (None, 1, network_input_size[0], network_input_size[1])
-    print "Making network of input size ", network_shape
-    network = layers.InputLayer(shape=network_shape, input_var=input_var)
-    network = layers.dropout(network, p=input_dropout)
-
-    for _ in range(num_filter_layers):
-
-        # see also: layers.cuda_convnet.Conv2DCCLayer
-        network = layers.Conv2DLayer(
-            network,
-            num_filters=num_filters,
-            filter_size=(filter_sizes, filter_sizes),
-            # pad = (2, 2),
-            # stride=(2, 2),
-            nonlinearity=nonlin_choice,
-            W=lasagne.init.GlorotUniform())
-
-        network = layers.MaxPool2DLayer(
-            network,
-            pool_size=(pool_size_x, pool_size_y))
-
-    for _ in range(num_dense_layers):
-
-        network = layers.DenseLayer(
-            layers.dropout(network, p=dense_dropout),
-            num_units=num_dense_units,
-            nonlinearity=nonlin_choice)
-
-    # And, finally, the 10-unit output layer with 50% dropout on its inputs:
-    network = layers.DenseLayer(
-            layers.dropout(network, p=dense_dropout),
-            num_units=num_classes,
-            nonlinearity=lasagne.nonlinearities.softmax)
-
-    return network
-
-
-# Prepare Theano variables for inputs and targets
-def prepare_network():
-
-    input_var = T.tensor4('inputs')
-    target_var = T.ivector('targets')
-
-    # Create neural network model (depending on first command line parameter)
-    print("Building model and compiling functions...")
-    network = build_cnn(input_var)
-
-    # Create a loss expression for training, i.e., a scalar objective we want
-    # to minimize (for our multi-class problem, it is the cross-entropy loss):
-    prediction = lasagne.layers.get_output(network)
-    loss = lasagne.objectives.categorical_crossentropy(prediction, target_var)
-    loss = loss.mean()
-    reg_l2 = lasagne.regularization.regularize_network_params(network, lasagne.regularization.l2)
-    # loss = loss + 0.0001 * reg_l2
-
-    # We could add some weight decay as well here, see lasagne.regularization.
-
-    # Create update expressions for training, i.e., how to modify the
-    # parameters at each training step. Here, we'll use Stochastic Gradient
-    # Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
-    params = lasagne.layers.get_all_params(network, trainable=True)
-    # updates = lasagne.updates.nesterov_momentum(
-    #         loss, params, learning_rate=0.000249, momentum=0.5)
-    updates = lasagne.updates.rmsprop(
-             loss, params, learning_rate=0.00025) #0.000249
-
-    # Create a loss expression for validation/testing. The crucial difference
-    # here is that we do a deterministic forward pass through the network,
-    # disabling dropout layers.
-    test_prediction = lasagne.layers.get_output(network, deterministic=True)
-    test_loss = lasagne.objectives.categorical_crossentropy(test_prediction,
-                                                            target_var)
-    test_loss = test_loss.mean()
-
-    # As a bonus, also create an expression for the classification accuracy:
-    test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),
-                      dtype=theano.config.floatX)
-
-    # Compile a function performing a training step on a mini-batch (by giving
-    # the updates dictionary) and returning the corresponding training loss:
-    train_fn = theano.function([input_var, target_var], loss, updates=updates)
-
-    # Compile a second function computing the validation loss and accuracy:
-    val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
-
-    test_prediction = lasagne.layers.get_output(network, deterministic=True)
-#     predict_fn = theano.function([input_var], T.argmax(test_prediction, axis=1))
-    predict_fn = theano.function([input_var], test_prediction)
-
-    return network, train_fn, predict_fn, val_fn
+# loading the data
+loadpath = base_path + 'splits_128/split' + str(split) + '.pkl'
+data, num_classes = helpers.load_data(
+    loadpath, small_dataset=small_dataset, do_median_normalise=True)
 
 
 def extract_slice(spec):
@@ -213,65 +74,6 @@ def extract_slice(spec):
         return tiled[:, :slice_width]
 
 
-def form_correct_shape_array(X):
-    temp =  np.dstack(X).transpose((2, 0, 1))
-    S = temp.shape
-    temp = temp.astype(np.float32).reshape(S[0], 1, S[1], S[2])
-    return temp
-
-
-def augment_slice(slice_in):
-    '''
-    does some stuff to a single slice example to augment the dataset
-    '''
-
-    this_slice = slice_in.copy().astype(np.float64)
-
-    # if the spectrogram is too small, consider either tiling it, or padding with zeros
-    # todo
-
-    # rolling the spectrogram
-    n = slice_in.shape[1]
-    roll_amount = np.random.randint(n)
-    this_slice = np.roll(this_slice, roll_amount, axis=1)
-
-    # rotating
-    angle = np.random.rand() * 2
-    this_slice = skimage.transform.rotate(
-        this_slice, angle=angle, mode='nearest')
-
-    # # cropping in height - specify crop maximums as fractions
-    # max_crop_top = 0.05
-    # max_crop_bottom = 0.05
-    # top_amount = max_crop_top * float(this_slice.shape[0])
-    # bottom_amount = max_crop_bottom * float(this_slice.shape[0])
-    # this_slice = this_slice[top_amount:-bottom_amount, :]
-
-    # # cropping in length
-    # max_crop_left = 0.1
-    # max_crop_right = 0.1
-    # left_amount = max_crop_left * float(this_slice.shape[1])
-    # right_amount = max_crop_right * float(this_slice.shape[1])
-    # this_slice = this_slice[:, left_amount:-right_amount]
-
-    # # scaling
-    # this_slice = skimage.transform.resize(this_slice, network_input_size)
-
-    # flipping
-    if np.random.rand() > 0.5:
-        this_slice = this_slice[:, ::-1]
-
-    # volume ramping
-    min_vol_ramp = 0.8
-    max_vol_ramp = 1.2
-    start_vol = np.random.rand() * (max_vol_ramp - min_vol_ramp) + min_vol_ramp
-    end_vol = np.random.rand() * (max_vol_ramp - min_vol_ramp) + min_vol_ramp
-    vol_ramp = np.linspace(start_vol, end_vol, this_slice.shape[1])
-    this_slice = this_slice * vol_ramp[None, :]
-
-    return this_slice.astype(np.float32)
-
-
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 
     assert len(inputs) == len(targets)
@@ -279,23 +81,47 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
     if shuffle:
         indices = np.arange(len(inputs))
         np.random.shuffle(indices)
-    for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
+
+    for start_idx in range(0, len(inputs), batchsize):
+
+        end_idx = min(start_idx + batchsize, len(inputs))
+
         if shuffle:
-            excerpt = indices[start_idx:start_idx + batchsize]
+            excerpt = indices[start_idx:end_idx]
         else:
-            excerpt = np.arange(start_idx, start_idx + batchsize)
+            excerpt = np.arange(start_idx, end_idx)
 
-        if slices:
-            # take a single random slice from each of the training examples
-            these_spectrograms = [inputs[xx][0, :, :] for xx in excerpt]
-            Xs = [extract_slice(x) for x in these_spectrograms]
-            Xs_to_return = form_correct_shape_array(Xs)
-            yield Xs_to_return, targets[excerpt]
-        else:
-            yield inputs[excerpt], targets[excerpt]
+        # take a single random slice from each of the training examples
+        these_spectrograms = [inputs[xx] for xx in excerpt]
+        Xs = [helpers.tile_pad(x[0], slice_width) for x in these_spectrograms]
+        Xs_to_return = cnn_utils.form_correct_shape_array(Xs)
+        yield Xs_to_return, targets[excerpt]
+
+# def generate_balanced_minibatches_multiclass2(
+#         inputs, targets, items_per_minibatch, shuffle=True):
+
+#     assert len(inputs) == len(targets)
+
+#     all_targets = np.unique(targets)
+
+#     def class_generator(class_idx):
+#         '''
+#         endlessly generates training pairs for a specfic class
+#         '''
+#         class_exemplars = np.where(targets==class_idx)[0]
+
+#         todo - loop
+#         for idx in class_exemplars:
+#             yield inputs[idx], targets[idx]
+
+#     largest_class_size = np.max(np.bincount(targets))
+
+#     per_class_per_minibatch = items_per_minibatch / len(all_targets)
+#     num_minibatches =
 
 
-def iterate_balanced_minibatches_multiclass(inputs, targets, full_batchsize, shuffle=True):
+def generate_balanced_minibatches_multiclass(
+        inputs, targets, items_per_minibatch, shuffle=True):
 
     assert len(inputs) == len(targets)
 
@@ -308,90 +134,63 @@ def iterate_balanced_minibatches_multiclass(inputs, targets, full_batchsize, shu
         for key in idxs.keys():
             np.random.shuffle(idxs[key])
 
-    per_class_batchsize = full_batchsize / len(all_targets)
+    num_per_class_per_minibatch = items_per_minibatch / len(all_targets)
 
     # find the largest class - this will define the epoch size
     examples_in_epoch = max([len(x) for _, x in idxs.iteritems()])
 
     # in each batch, new data from largest class is provided
     # data from other class is reused once it runs out
-    for start_idx in range(0, examples_in_epoch - per_class_batchsize + 1, per_class_batchsize):
+    for start_idx in range(0,
+                           examples_in_epoch,
+                           num_per_class_per_minibatch):
+
+        end_idx = min(start_idx + num_per_class_per_minibatch, len(inputs))
 
         # get indices for each of the excerpts, wrapping back to the beginning...
         excerpts = []
         for target, this_target_idxs in idxs.iteritems():
-            excerpts.append(np.take(
-                this_target_idxs, np.arange(start_idx, start_idx + per_class_batchsize), mode='wrap'))
+            these_idxs = np.take(this_target_idxs,
+                np.arange(start_idx, end_idx), mode='wrap')
+            excerpts.append(these_idxs)
 
-        # reform the full balanced inputs and output
+        # for each of the training indices for this minibatch, extract and
+        # pre-process a training instance
+        training_images = []
         full_idxs = np.hstack(excerpts)
 
-        if slices:
-            # take a single random slice from each of the training examples
-            these_spectrograms = [inputs[xx] for xx in full_idxs]
-            Xs = [extract_slice(x) for x in these_spectrograms]
+        for idx in full_idxs:
+            this_image = inputs[idx]
+            this_image = helpers.tile_pad(this_image, slice_width)
             if augment_data:
-                Xs = map(augment_slice, Xs)
-            yield form_correct_shape_array(Xs), targets[full_idxs]
-        else:
-            if augment_data:
-                Xs = map(augment_slice, inputs[full_idxs])
-            else:
-                Xs = inputs[full_idxs]
-            yield Xs, targets[full_idxs]
+                this_image = helpers.augment_slice(this_image, **augment_options)
+            training_images.append(this_image)
+
+        yield (cnn_utils.form_correct_shape_array(training_images), targets[full_idxs])
 
 
 def form_slices_validation_set(data):
 
-    val_X = []
-    val_y = []
-
-    # for this_x, this_y in zip(data['val_X'], data['val_y']):
-
-    #     # choose how many slices to extract
-    #     how_many = this_x.shape[1] / slice_width
-    #     val_X += [extract_slice(this_x) for _ in range(how_many)]
-    #     val_y += [this_y] * how_many
-    val_X = [tile_pad(xx, slice_width) for xx in data['val_X']]
+    val_X = [helpers.tile_pad(xx, slice_width) for xx in data['val_X']]
+    val_X = [audio_utils.median_normalise(xx) for xx in val_X]
 
     val_y = np.hstack(data['val_y'])
-    val_X = form_correct_shape_array(val_X)
+    val_X = cnn_utils.form_correct_shape_array(val_X)
 
     print "validation set is of size ", val_X.shape, val_y.shape
 
     return val_X, val_y
 
 
-def tile_pad(this_slice, desired_width):
-    num_tiles = np.ceil(float(desired_width) / this_slice.shape[1])
-    tiled = np.tile(this_slice, (1, num_tiles))
-    return tiled[:, :desired_width]
-
-
-def force_slice_length(spec, location, slice_width):
-    '''
-    extract a slice from a specific location, but if there isn't enough spectrogram to
-    go around then maybe do something else... e.g. wrapping
-    '''
-    hww = slice_width / 2
-    to_return = spec[:, location-hww:location+hww]
-    if to_return.shape[1] == slice_width:
-        return to_return
-    else:
-        num_tiles = np.ceil(float(slice_width) / to_return.shape[1])
-        tiled = np.tile(to_return, (1, num_tiles))
-        # print "Tiling", tiled[:, :slice_width].shape
-        return tiled[:, :slice_width]
-
-
-
 # form a proper validation set here...
 val_X, val_y = form_slices_validation_set(data)
 
-network, train_fn, predict_fn, val_fn = prepare_network()
+network, train_fn, predict_fn, val_fn = \
+    helpers.prepare_network(learning_rate, network_input_size, num_classes)
 
 print "Starting training..."
-print "There will be %d minibatches per epoch" % (data['train_y'].shape[0] / (minibatch_size*num_classes))
+print "There will be %d minibatches per epoch" % \
+    (data['train_y'].shape[0] / (minibatch_size*num_classes))
 
 headerline = """     epoch   train loss   train/val   valid auc   valid acc     dur
    -------  -----------  -----------  -----------  -----------  -------"""
@@ -400,8 +199,16 @@ sys.stdout.flush()
 
 best_validation_accuracy = 0.0
 best_model = None
+run_results = []
 
-out_fid = open('results_slices.txt', 'w')
+this_run_dir = 'results/test_dir/'
+if not os.path.exists(this_run_dir):
+    os.mkdir(this_run_dir)
+
+if not os.path.exists(this_run_dir + '/conf_mat/'):
+    os.mkdir(this_run_dir + '/conf_mat/')
+
+out_fid = open(this_run_dir + 'results_slices.txt', 'w')
 out_fid.write(headerline)
 
 for epoch in range(num_epochs):
@@ -410,101 +217,111 @@ for epoch in range(num_epochs):
     train_loss = train_batches = 0
     start_time = time.time()
 
-    print "Minibatch: ",
-    for count, batch in enumerate(iterate_balanced_minibatches_multiclass(
-            data['train_X'], data['train_y'], int(minibatch_size), shuffle=True)):
-        if count % 100 == 0:
-            print '.',
+    # we now create the generator for this epoch
+    epoch_gen = generate_balanced_minibatches_multiclass(
+            data['train_X'], data['train_y'], int(minibatch_size), shuffle=True)
+    threaded_epoch_gen = helpers.threaded_gen(epoch_gen)
+
+    results = {}
+
+    ########################################################################
+    # TRAINING PHASE
+
+    for count, batch in enumerate(threaded_epoch_gen):
         inputs, targets = batch
-        # print inputs.shape, targets.shape, inputs.max(), targets.max(), inputs.min(), targets.min(), inputs.dtype, targets.dtype
         train_loss += train_fn(inputs, targets)
         train_batches += 1
-        sys.stdout.flush()
 
-    train_loss = train_loss / train_batches
+        # print a progress bar
+        if count % 10 == 0:
+            sys.stdout.write('.')
+            sys.stdout.flush()
+
+    # computing the training loss
+    results['train_loss'] = train_loss / train_batches
     print " total = ", train_batches,
 
-    # And a full pass over the validation data:
-    val_err = val_acc = val_batches = 0
+    results['train_time'] = time.time() - start_time
+
+    ########################################################################
+    # VALIDATION PHASE
+
+    start_time = time.time()
+    batch_val_loss = val_acc = val_batches = 0
     y_preds = []
     y_gts = []
 
     # doing the normal validation
-    for batch in iterate_minibatches(val_X, val_y, int(minibatch_size/6)):
+    val_sum = 0
+    for batch in iterate_minibatches(val_X, val_y, 8):
 
         inputs, targets = batch
 
         err, acc = val_fn(inputs, targets)
-        val_err += err
+        batch_val_loss += err
         val_acc += acc
         val_batches += 1
+
+        val_sum += targets.shape[0]
 
         y_preds.append(predict_fn(inputs))
         y_gts.append(targets)
 
-    class_predictions = np.argmax(np.vstack(y_preds), axis=1)
-    mean_val_accuracy = metrics.accuracy_score(np.hstack(y_gts), class_predictions)
+    probability_predictions = np.vstack(y_preds)
+    class_predictions = np.argmax(probability_predictions, axis=1)
 
-    auc = 0#metrics.roc_auc_score(np.hstack(y_gts), np.vstack(y_preds))
+    results['auc'] = cnn_utils.multiclass_auc(
+        np.hstack(y_gts), probability_predictions)
+    results['mean_val_accuracy'] = np.array(val_acc).sum() / val_sum
+    results['val_loss'] = batch_val_loss / val_batches
+    results['val_time'] = time.time() - start_time
 
-    val_loss = val_err / val_batches
-
-    # now doing the per-slice validation...
-    # hww = slice_width/2
-    # offset = 8
-    # print len(data['val_X']), data['val_y'].shape
-
-    # y_preds = []
-    # counter = 0
-    # for this_val_x, this_val_y in zip(data['val_X'], data['val_y']):
-    #     counter += 1
-    #     slices = []
-    #     locations = range(hww, this_val_x.shape[1]-hww, offset)
-
-    #     if len(locations) == 0:
-    #         locations = [hww]
-
-    #     for location in locations:
-    #         slices.append(force_slice_length(this_val_x, location, slice_width))
-
-    #     slice_preds = predict_fn(form_correct_shape_array(slices))
-    #     all_slice_preds = np.vstack(slice_preds).mean(0)
-
-    #     if all_slice_preds.shape[0] != 10:
-    #         import pdb; pdb.set_trace()
-
-    #     y_preds.append(all_slice_preds)
-
-    # slice_val_accuracy = metrics.accuracy_score(data['val_y'], np.argmax(np.vstack(y_preds), axis=1))
-    # print slice_val_accuracy
-
-
-
-#     mean_val_accuracy = val_acc / val_batches
+    ########################################################################
+    # LOGGING AND PLOTTING
 
     # Then we print the results for this epoch:
     results_row = "\n" + \
-        "     " + str(epoch).ljust(8) + \
-        ("%0.06f" % (train_loss)).ljust(12) + \
-        ("%0.06f" % (train_loss / val_loss)).ljust(12) + \
-        ("%0.06f" % (auc)).ljust(12) + \
+        "     " + str(epoch).ljust(6) + \
+        ("%0.06f" % (train_loss)).ljust(10) + \
+        ("%0.06f" % (val_loss)).ljust(10) + \
+        ("%0.06f" % (train_loss / val_loss)).ljust(10) + \
         ("%0.06f" % (mean_val_accuracy)).ljust(10) + \
+        ("%0.06f" % (auc)).ljust(10) + \
         ("%0.04f" % (time.time() - start_time)).ljust(10)
     print results_row,
     # sys.stdout.flush()
 
-    # let's try saving a confusion matrix on each run...
-    savepath = './conf_mat/%05d.mat' % epoch
+    run_results.append(
+        {'train_loss': train_loss,
+         'val_loss': val_loss,
+         'mean_val_accuracy': mean_val_accuracy,
+         'auc': auc,
+         'time': 0.0})
+
+    # let's try saving a confusion matrix on each run... (maybe just add this to a run vector)
+    savepath = this_run_dir + '/conf_mat/%05d.mat' % epoch
     cm = metrics.confusion_matrix(np.hstack(y_gts), class_predictions)
     scipy.io.savemat(savepath, {'cm':cm})
 
     out_fid.write(results_row + "\n")
 
+    # saving the model, if we are the best so far
     if mean_val_accuracy > best_validation_accuracy:
         best_model = (network, predict_fn)
         best_validation_accuracy = mean_val_accuracy
 
-        with open('best_model_slices.pkl', 'w') as f:
+        with open(this_run_dir + 'best_model_slices.pkl', 'w') as f:
             pickle.dump(best_model, f)
+
+    # updating a training/val loss graph...
+    all_train_losses = [result['train_loss'] for result in run_results]
+    all_val_losses = [result['val_loss'] for result in run_results]
+
+    graph_savepath = this_run_dir + 'training_graph.png'
+    plt.plot(all_train_losses, label='train_loss')
+    plt.plot(all_val_losses, label='val_loss')
+    plt.savefig(graph_savepath, bbox_inches='tight')
+
+
 
 out_fid.close()
