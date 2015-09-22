@@ -11,6 +11,7 @@ import seaborn as sns
 # IO
 import scipy.io
 import cPickle as pickle
+import yaml
 
 # CNN bits
 import theano
@@ -30,8 +31,8 @@ base_path = '/media/michael/Seagate/urban8k/'
 split = 3
 slice_width = 128
 slices = True
-num_epochs = 500
-small_dataset = False
+num_epochs = 2
+small_dataset = True
 
 # NOTE that the *actual* minibatch size will be something like num_classes*minibatch_size
 minibatch_size = 100 # optimise
@@ -55,7 +56,7 @@ learning_rate = 0.00025
 # loading the data
 loadpath = base_path + 'splits_128/split' + str(split) + '.pkl'
 data, num_classes = helpers.load_data(
-    loadpath, small_dataset, do_median_normalise)
+    loadpath, do_median_normalise=do_median_normalise, small_dataset=small_dataset)
 
 ###############################################################
 # Overall setup
@@ -78,6 +79,7 @@ print "There will be %d minibatches per epoch" % \
 
 best_validation_accuracy = 0.0
 best_model = None
+best_epoch = 0
 run_results = []
 
 this_run_dir = helpers.create_numbered_folder(global_dir + 'run_%06d/')
@@ -171,6 +173,7 @@ for epoch in range(num_epochs):
     if results['mean_val_accuracy'] > best_validation_accuracy:
         best_model = (network, predict_fn, results)
         best_validation_accuracy = results['mean_val_accuracy']
+        best_epoch = epoch
 
         with open(this_run_dir + 'best_model.pkl', 'w') as f:
             pickle.dump(best_model, f, -1)
@@ -199,3 +202,13 @@ final_model = (network, predict_fn, results)
 with open(this_run_dir + 'final_model.pkl', 'w') as f:
     pickle.dump(final_model, f, -1)
 
+# for posterity, let's save separately the best and final validation loss and accuracy
+final_summary = {
+    'final_val_acc': float(run_results[-1]['mean_val_accuracy']),
+    'final_val_loss': float(run_results[-1]['val_loss']),
+    'best_val_acc': float(run_results[best_epoch]['mean_val_accuracy']),
+    'best_val_loss': float(run_results[best_epoch]['val_loss'])
+    }
+
+with open(this_run_dir + 'best_and_final.yaml', 'w') as fid:
+    fid.write( yaml.dump(final_summary) )
