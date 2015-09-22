@@ -1,15 +1,22 @@
-import cPickle as pickle
 import numpy as np
+import os
+import sys
+
+# IO
+import cPickle as pickle
+
+# CNN
 import theano.tensor as T
 import theano
 import lasagne
 # import lasagne.layers.cuda_convnet
 from lasagne import layers
-import skimage.transform
 
-import sys
-sys.path.append('/home/michael/projects/engaged_hackathon/engaged/features/')
-import audio_utils
+# Other utils
+import skimage.transform
+sys.path.append('/home/michael/projects/engaged_hackathon/')
+from engaged.features import audio_utils, cnn_utils
+
 
 
 def load_data(loadpath, do_median_normalise=True, small_dataset=False):
@@ -142,8 +149,9 @@ def prepare_network(learning_rate, network_input_size, num_classes):
     params = lasagne.layers.get_all_params(network, trainable=True)
     # updates = lasagne.updates.nesterov_momentum(
     #         loss, params, learning_rate=0.000249, momentum=0.5)
-    updates = lasagne.updates.rmsprop(
-             loss, params, learning_rate=learning_rate) #0.000249
+    theano_lr = T.scalar('lr')
+
+    updates = lasagne.updates.rmsprop(loss, params, learning_rate=theano_lr) #0.000249
 
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
@@ -159,7 +167,7 @@ def prepare_network(learning_rate, network_input_size, num_classes):
 
     # Compile a function performing a training step on a mini-batch (by giving
     # the updates dictionary) and returning the corresponding training loss:
-    train_fn = theano.function([input_var, target_var], loss, updates=updates)
+    train_fn = theano.function([input_var, target_var, theano_lr], loss, updates=updates)
 
     # Compile a second function computing the validation loss and accuracy:
     val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
@@ -168,7 +176,7 @@ def prepare_network(learning_rate, network_input_size, num_classes):
 #     predict_fn = theano.function([input_var], T.argmax(test_prediction, axis=1))
     predict_fn = theano.function([input_var], test_prediction)
 
-    return network, train_fn, predict_fn, val_fn
+    return network, train_fn, predict_fn, val_fn, input_var, target_var, loss
 
 
 def threaded_gen(generator, num_cached=50):
@@ -258,15 +266,30 @@ def augment_slice(slice_in, roll=True, rotate=False, flip=True,
 
 
 class Logger(object):
+
     def __init__(self, fname):
         self.out_fid = open(fname, 'w')
-        headerline = """     epoch   train loss   train/val   valid auc   valid acc     dur
-                    -------  -----------  -----------  -----------  -----------  -------"""
+        headerline = " epoch  train_ls   val_ls    train/val   val_acc   val_auc   train_dur val_dur\n" + \
+                     " ------------------------------------------------------------------------"
+        print headerline,
+        sys.stdout.flush()
         self.out_fid.write(headerline)
+        self.out_fid.flush()
 
-    def log(self, tolog):
-        self.out_fid.write(tolog)
+    def log(self, result):
+        tolog = \
+            ("\n%4d" % result['epoch']).ljust(10) + \
+            ("%0.04f" % result['train_loss']).ljust(10) + \
+            ("%0.04f" % result['val_loss']).ljust(10) + \
+            ("%0.04f" % (result['train_loss'] / result['val_loss'])).ljust(10) + \
+            ("%0.04f" % result['mean_val_accuracy']).ljust(10) + \
+            ("%0.04f" % result['auc']).ljust(10) + \
+            ("%0.03f" % result['train_time']).ljust(8) + \
+            ("%0.03f" % result['val_time']).ljust(8)
         print tolog,
+        sys.stdout.flush()
+        self.out_fid.write(tolog)
+        self.out_fid.flush()
 
     def __del__(self):
         self.out_fid.close()
@@ -289,3 +312,126 @@ def tile_pad(this_slice, desired_width):
         num_tiles = np.ceil(float(desired_width) / this_slice.shape[1])
         tiled = np.tile(this_slice, (1, num_tiles))
         return tiled[:, :desired_width]
+
+
+
+def iterate_minibatches(inputs, targets, batchsize, slice_width, shuffle=False):
+
+    assert len(inputs) == len(targets)
+
+    if shuffle:
+        indices = np.arange(len(inputs))
+        np.random.shuffle(indices)
+
+    for start_idx in range(0, len(inputs), batchsize):
+
+        end_idx = min(start_idx + batchsize, len(inputs))
+
+        if shuffle:
+            excerpt = indices[start_idx:end_idx]
+        else:
+            excerpt = np.arange(start_idx, end_idx)
+
+        # take a single random slice from each of the training examples
+        these_spectrograms = [inputs[xx] for xx in excerpt]
+        Xs = [tile_pad(x[0], slice_width) for x in these_spectrograms]
+        Xs_to_return = cnn_utils.form_correct_shape_array(Xs)
+        yield Xs_to_return, targets[excerpt]
+
+
+def generate_balanced_minibatches_multiclass(
+        inputs, targets, items_per_minibatch, slice_width, augment_data=False,
+        augment_options=None, shuffle=True):
+
+    assert len(inputs) == len(targets)
+
+    all_targets = np.unique(targets)
+
+    idxs = {this_targ: np.where(targets==this_targ)[0]
+            for this_targ in all_targets}
+
+    if shuffle:
+        for key in idxs.keys():
+            np.random.shuffle(idxs[key])
+
+    num_per_class_per_minibatch = items_per_minibatch / len(all_targets)
+
+    # find the largest class - this will define the epoch size
+    examples_in_epoch = max([len(x) for _, x in idxs.iteritems()])
+
+    # in each batch, new data from largest class is provided
+    # data from other class is reused once it runs out
+    for start_idx in range(0,
+                           examples_in_epoch,
+                           num_per_class_per_minibatch):
+
+        end_idx = min(start_idx + num_per_class_per_minibatch, len(inputs))
+
+        # get indices for each of the excerpts, wrapping back to the beginning...
+        excerpts = []
+        for target, this_target_idxs in idxs.iteritems():
+            these_idxs = np.take(this_target_idxs,
+                np.arange(start_idx, end_idx), mode='wrap')
+            excerpts.append(these_idxs)
+
+        # for each of the training indices for this minibatch, extract and
+        # pre-process a training instance
+        training_images = []
+        full_idxs = np.hstack(excerpts)
+
+        for idx in full_idxs:
+            this_image = inputs[idx]
+            this_image = tile_pad(this_image, slice_width)
+            if augment_data:
+                this_image = augment_slice(this_image, **augment_options)
+            training_images.append(this_image)
+
+        yield (cnn_utils.form_correct_shape_array(training_images), targets[full_idxs])
+
+
+def form_slices_validation_set(data, slice_width, do_median_normalise):
+
+    val_X = [tile_pad(xx, slice_width) for xx in data['val_X']]
+    if do_median_normalise:
+        val_X = [audio_utils.median_normalise(xx) for xx in val_X]
+    val_X = cnn_utils.form_correct_shape_array(val_X)
+    val_y = np.hstack(data['val_y'])
+
+    print "validation set is of size ", val_X.shape, val_y.shape
+
+    return val_X, val_y
+
+
+def create_numbered_folder(path, must_be_biggest=True):
+    '''
+    creates a free numbered folder and returns the path to it.
+    must_be_biggest
+        Ensure the new folder is the highest-numbered folder
+    path should be e.g. 'results/run_%04d'
+    '''
+    count = 0
+    while os.path.exists(path % count):
+        count += 1
+
+    os.mkdir(path % count)
+    return path % count
+
+
+class LearningRate(object):
+
+    def __init__(self, init, final, iters_at_init, falloff):
+        assert final < init
+        assert falloff > 0.0
+        self.init = init
+        self.iters_at_init = iters_at_init
+        self.final = final
+        self.falloff = falloff
+        self.current = init
+
+    def get_lr(self, epoch):
+        if epoch < self.iters_at_init:
+            return self.init
+        else:
+            diminuation = np.exp(-self.falloff *(epoch - self.iters_at_init))
+            return (self.init - self.final) * diminuation + self.final
+
