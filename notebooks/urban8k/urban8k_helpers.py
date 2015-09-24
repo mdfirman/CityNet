@@ -57,21 +57,33 @@ def load_data(loadpath, do_median_normalise=True, small_dataset=False):
     return data, num_classes
 
 
-def build_cnn(input_var, network_input_size, num_classes):
+def build_cnn(input_var, network_input_size, num_classes, params=None):
     '''
     Function to programmatically build a CNN in lasagne.
     TODO - give architechture as input parameters.
     '''
-    input_dropout = 0.1
-    filter_sizes = 5
-    num_filters = 40
-    num_filter_layers = 2
-    pool_size_x = 4
-    pool_size_y = 2
-    dense_dropout = 0.5
-    num_dense_layers = 3
-    num_dense_units = 800
-    inital_filter_layer = False
+
+    if params is not None:
+        # I don't like this setup but I'm not sure hyperopt supports a
+        # dictionary style thing...
+        _, _, _, _, input_dropout, filter_sizes, num_filters, num_filter_layers, \
+            pool_size_x, pool_size_y, dense_dropout, num_dense_layers, \
+            num_dense_units, inital_filter_layer, _, _, _ = params
+        # print input_dropout, filter_sizes, num_filters, num_filter_layers
+        # print pool_size_x, pool_size_y, dense_dropout, num_dense_layers
+        # print num_dense_units, inital_filter_layer
+    else:
+        # Some default params which work ok
+        input_dropout = 0.1
+        filter_sizes = 5
+        num_filters = 40
+        num_filter_layers = 2
+        pool_size_x = 4
+        pool_size_y = 2
+        dense_dropout = 0.5
+        num_dense_layers = 3
+        num_dense_units = 800
+        inital_filter_layer = False
 
     nonlin_choice = lasagne.nonlinearities.very_leaky_rectify
 
@@ -89,13 +101,13 @@ def build_cnn(input_var, network_input_size, num_classes):
             nonlinearity=nonlin_choice,
             W=lasagne.init.GlorotUniform())
 
-    for _ in range(num_filter_layers):
+    for _ in range(int(num_filter_layers)):
 
         # see also: layers.cuda_convnet.Conv2DCCLayer
         network = layers.Conv2DLayer(
             network,
-            num_filters=num_filters,
-            filter_size=(filter_sizes, filter_sizes),
+            num_filters=int(num_filters),
+            filter_size=(int(filter_sizes), int(filter_sizes)),
             # pad = (2, 2),
             # stride=(2, 2),
             nonlinearity=nonlin_choice,
@@ -103,13 +115,13 @@ def build_cnn(input_var, network_input_size, num_classes):
 
         network = layers.MaxPool2DLayer(
             network,
-            pool_size=(pool_size_x, pool_size_y))
+            pool_size=(int(pool_size_x), int(pool_size_y)))
 
-    for _ in range(num_dense_layers):
+    for _ in range(int(num_dense_layers)):
 
         network = layers.DenseLayer(
             layers.dropout(network, p=dense_dropout),
-            num_units=num_dense_units,
+            num_units=int(num_dense_units),
             nonlinearity=nonlin_choice)
 
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
@@ -122,15 +134,13 @@ def build_cnn(input_var, network_input_size, num_classes):
 
 
 # Prepare Theano variables for inputs and targets
-def prepare_network(learning_rate, network_input_size, num_classes):
+def prepare_network(learning_rate, network_input_size, num_classes, params=None):
 
     input_var = T.tensor4('inputs')
     target_var = T.ivector('targets')
 
     # Create neural network model (depending on first command line parameter)
-    print("Building model and compiling functions...")
-    print network_input_size, num_classes
-    network = build_cnn(input_var, network_input_size, num_classes)
+    network = build_cnn(input_var, network_input_size, num_classes, params)
 
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
@@ -269,7 +279,7 @@ class Logger(object):
 
     def __init__(self, fname):
         self.out_fid = open(fname, 'w')
-        headerline = " epoch  train_ls   val_ls    train/val   val_acc   val_auc   train_dur val_dur\n" + \
+        headerline = " epoch  train_ls  val_ls   train/val  val_acc  val_auc  train_dur val_dur\n" + \
                      " ------------------------------------------------------------------------"
         print headerline,
         sys.stdout.flush()
