@@ -445,3 +445,4 @@ class LearningRate(object):
             diminuation = np.exp(-self.falloff *(epoch - self.iters_at_init))
             return (self.init - self.final) * diminuation + self.final
 
+
