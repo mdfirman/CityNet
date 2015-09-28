@@ -19,7 +19,7 @@ from engaged.features import audio_utils, cnn_utils
 
 
 
-def load_data(loadpath, do_median_normalise=True, small_dataset=False):
+def load_data(loadpath, normalisation=None, small_dataset=False, normalisation_params=None):
     '''
     Loading in all the data at once, and get into the correct format.
     '''
@@ -36,11 +36,13 @@ def load_data(loadpath, do_median_normalise=True, small_dataset=False):
         if not key.startswith('__'):
             print key, len(val),
 
-        # normalisation
+        # normalisation strategies
+
         if key.endswith('_X'):
-            if do_median_normalise:
+            if normalisation is not None:
                 for idx in range(len(data[key])):
-                    data[key][idx] = audio_utils.median_normalise(data[key][idx])
+                    data[key][idx] = audio_utils.normalise(
+                        data[key][idx], normalisation, normalisation_params)
 
         # ensuring correct types
         elif key.endswith('_y'):
@@ -68,7 +70,7 @@ def build_cnn(input_var, network_input_size, num_classes, params=None):
         # dictionary style thing...
         _, _, _, _, input_dropout, filter_sizes, num_filters, num_filter_layers, \
             pool_size_x, pool_size_y, dense_dropout, num_dense_layers, \
-            num_dense_units, inital_filter_layer, _, _, _ = params
+            num_dense_units, inital_filter_layer, _, _, _, _, _ = params
         # print input_dropout, filter_sizes, num_filters, num_filter_layers
         # print pool_size_x, pool_size_y, dense_dropout, num_dense_layers
         # print num_dense_units, inital_filter_layer
@@ -85,6 +87,17 @@ def build_cnn(input_var, network_input_size, num_classes, params=None):
         num_dense_units = 800
         inital_filter_layer = False
 
+    print "input_dropout", input_dropout
+    print "filter_sizes",  filter_sizes
+    print "num_filters", num_filters
+    print "num_filter_layers", num_filter_layers
+    print "pool_size_x", pool_size_x
+    print "pool_size_y", pool_size_y
+    print "dense_dropout", dense_dropout
+    print "num_dense_layers", num_dense_layers
+    print "num_dense_units", num_dense_units
+    print "inital_filter_layer", inital_filter_layer
+
     nonlin_choice = lasagne.nonlinearities.very_leaky_rectify
 
     # Input layer, followed by dropout
@@ -96,8 +109,8 @@ def build_cnn(input_var, network_input_size, num_classes, params=None):
     if inital_filter_layer:
         network = layers.Conv2DLayer(
             network,
-            num_filters=num_filters,
-            filter_size=(filter_sizes, filter_sizes),
+            num_filters=int(num_filters),
+            filter_size=(int(filter_sizes), int(filter_sizes)),
             nonlinearity=nonlin_choice,
             W=lasagne.init.GlorotUniform())
 
@@ -399,13 +412,13 @@ def generate_balanced_minibatches_multiclass(
         yield (cnn_utils.form_correct_shape_array(training_images), targets[full_idxs])
 
 
-def form_slices_validation_set(data, slice_width, do_median_normalise):
+def form_slices_validation_set(data, slice_width, do_median_normalise, key='val_'):
 
-    val_X = [tile_pad(xx, slice_width) for xx in data['val_X']]
+    val_X = [tile_pad(xx, slice_width) for xx in data[key + 'X']]
     if do_median_normalise:
         val_X = [audio_utils.median_normalise(xx) for xx in val_X]
     val_X = cnn_utils.form_correct_shape_array(val_X)
-    val_y = np.hstack(data['val_y'])
+    val_y = np.hstack(data[key + 'y'])
 
     print "validation set is of size ", val_X.shape, val_y.shape
 

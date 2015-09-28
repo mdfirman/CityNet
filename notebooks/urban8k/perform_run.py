@@ -34,10 +34,10 @@ def run(global_dir, network_input_size, num_classes, data, num_epochs,
         epochs_of_initial = params[2]
         falloff = params[3]
         augment_options = {
-            'roll': params[-2],
+            'roll': params[-3],
             'rotate': False,
-            'flip': params[-3],
-            'volume_ramp': params[-1],
+            'flip': params[-5],
+            'volume_ramp': params[-2],
             'normalise': False
             }
         print "Learning rate is ", learning_rate
@@ -57,7 +57,7 @@ def run(global_dir, network_input_size, num_classes, data, num_epochs,
     # forming validation data
     slice_width = network_input_size[1]
     val_X, val_y = helpers.form_slices_validation_set(
-                data, slice_width, do_median_normalise)
+                data, slice_width, do_median_normalise, 'val_')
 
     # setting up the network
     network, train_fn, predict_fn, val_fn, input_var, target_var, loss = \
@@ -141,8 +141,13 @@ def run(global_dir, network_input_size, num_classes, data, num_epochs,
 
         probability_predictions = np.vstack(y_preds)
 
-        results['auc'] = cnn_utils.multiclass_auc(
-            np.hstack(y_gts), probability_predictions)
+        try:
+            results['auc'] = cnn_utils.multiclass_auc(
+                np.hstack(y_gts), probability_predictions)
+        except:
+            print "Failed to compute the AUC"
+            results['auc'] = np.nan
+
         results['mean_val_accuracy'] = np.sum(val_acc) / num_validation_items
         results['val_loss'] = batch_val_loss / val_batches
         results['val_time'] = time.time() - start_time
