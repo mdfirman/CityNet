@@ -29,6 +29,14 @@ def run(global_dir, network_input_size, num_classes, data, num_epochs,
     """
 
     if params is not None:
+        temp_params = [0.00030558346816, 0.13865800304103, 35, 0.05863104967699, 0.03909097055997,
+            3, 60, 2, 3, 4, 0.6880736253895, 3, 800, None, True, False, True,
+            None, None]
+        temp_params[-2] = params[1] # norm_mean_std
+        temp_params[-1] = params[2] # norm_std_std
+        temp_params[-6] = params[0] # initial filter layer
+        params = temp_params
+
         learning_rate = params[0]
         final_learning_rate_fraction = params[1]
         epochs_of_initial = params[2]
@@ -37,7 +45,7 @@ def run(global_dir, network_input_size, num_classes, data, num_epochs,
             'roll': params[-3],
             'rotate': False,
             'flip': params[-5],
-            'volume_ramp': params[-2],
+            'volume_ramp': params[-4],
             'normalise': False
             }
         print "Learning rate is ", learning_rate

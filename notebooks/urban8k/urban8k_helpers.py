@@ -18,6 +18,31 @@ sys.path.append('/home/michael/projects/engaged_hackathon/')
 from engaged.features import audio_utils, cnn_utils
 
 
+def simple_whiten(data, reform=False):
+    '''
+    Simple thing to whiten the data
+    '''
+    for key in ['train_X', 'test_X', 'val_X']:
+        # print len(data[key]),
+        data[key] = [tile_pad(xx, 128) for xx in data[key]]
+        data[key] = np.vstack([xx.ravel() for xx in data[key]])
+    # print ''
+
+    means = data['train_X'].mean(0)[None, :]
+    variances = data['train_X'].var(0)[None, :]
+
+    for key in ['train_X', 'test_X', 'val_X']:
+        data[key] = np.vstack([xx.ravel() for xx in data[key]])
+        data[key] = (data[key] - means) / variances
+
+        if reform:
+            data[key] = np.dstack([xx.reshape(128, 128) for xx in data[key]])
+            data[key] = data[key].transpose((2, 0, 1))
+        # print data[key].shape, len(data[key]),
+
+    print ''
+    return data
+
 
 def load_data(loadpath, normalisation=None, small_dataset=False, normalisation_params=None):
     '''
@@ -31,6 +56,22 @@ def load_data(loadpath, normalisation=None, small_dataset=False, normalisation_p
     print "There are %d classes " % num_classes
     print np.unique(data['train_y'])
 
+    # if normalisation == 'pre_process_whiten':
+    if normalisation == 'simple_whiten':
+        data = simple_whiten(data, reform=True)
+
+    elif normalisation == 'full_whiten':
+        data = simple_whiten(data, reform=False)
+
+        from sklearn.decomposition import RandomizedPCA
+        rpca = RandomizedPCA(n_components=200, whiten=True)
+        rpca.fit(data['train_X'])
+
+        for key in ['train_X', 'test_X', 'val_X']:
+            data[key] = rpca.inverse_transform(rpca.transform(data[key]))
+            data[key] = np.dstack([xx.reshape(128, 128) for xx in data[key]])
+            data[key] = data[key].transpose((2, 0, 1))
+
     for key, val in data.iteritems():
 
         if not key.startswith('__'):
@@ -39,7 +80,10 @@ def load_data(loadpath, normalisation=None, small_dataset=False, normalisation_p
         # normalisation strategies
 
         if key.endswith('_X'):
-            if normalisation is not None:
+
+            if normalisation is not None and \
+                normalisation is not 'simple_whiten' and \
+                normalisation is not 'full_whiten':
                 for idx in range(len(data[key])):
                     data[key][idx] = audio_utils.normalise(
                         data[key][idx], normalisation, normalisation_params)
@@ -52,7 +96,10 @@ def load_data(loadpath, normalisation=None, small_dataset=False, normalisation_p
     if small_dataset:
         for data_type in ['train_', 'test_', 'val_']:
             num = len(data[data_type + 'X'])
-            to_use = np.random.choice(num, 100, replace=False)
+            to_pick = 200
+            # let's get the same small random dataset each time...
+            np.random.seed(seed=10)
+            to_use = np.random.choice(num, to_pick, replace=False)
             data[data_type + 'X'] = [data[data_type + 'X'][temp_idx] for temp_idx in to_use]
             data[data_type + 'y'] = data[data_type + 'y'][to_use]
 
