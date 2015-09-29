@@ -52,29 +52,7 @@ network_input_size = (128, slice_width)
 global_dir = helpers.create_numbered_folder('results/hyperopt_run_%04d/')
 
 # defining default parameters, which will be overwritten if hyperopting
-default_params = collections.OrderedDict((
-    ('initial_learning_rate', 0.000305583),
-    ('final_learning_rate_fraction', 0.138658),
-    ('epochs_of_initial', 35),
-    ('falloff', 0.0586),
-    ('input_dropout', 0.03909),
-    ('initial_filter_layer', False),
-    ('filter_sizes', 3),
-    ('num_filters', 60),
-    ('num_filter_layers', 2),
-    ('pool_size_x', 3),
-    ('pool_size_y', 4),
-    ('dense_dropout', 0.58768),
-    ('num_dense_layers', 3),
-    ('num_dense_units', 718),
-    ('augment_flip', False),
-    ('augment_roll', True),
-    ('augment_vol_ramp', False),
-    ('do_median_normalise', False),
-    ('num_epochs', 120),
-    ('minibatch_size', 80)
-))
-
+default_params = yaml.load(open('default_params.yaml'))
 
 # set up the hyperopt search space as a dictionary first...
 # (Do this before run_wrapper so it has access to the variable names)
@@ -112,7 +90,7 @@ def run_wrapper(hopt_params):
         # loading the data
         loadpath = base_path + 'splits_128/split' + str(split) + '.pkl'
         data, num_classes = helpers.load_data(
-            loadpath, normalisation='stowell_half',
+            loadpath, normalisation=default_params['normalisation'],
             small_dataset=small_dataset,
             normalisation_params=(
                 default_params['norm_mean_std'], default_params['norm_std_std']))
@@ -126,7 +104,6 @@ def run_wrapper(hopt_params):
             network_input_size=network_input_size,
             num_classes=num_classes,
             data=data,
-            minibatch_size=default_params['minibatch_size'],
             params=default_params)
 
         print "\n\n",

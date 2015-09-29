@@ -22,7 +22,7 @@ from engaged.features import cnn_utils
 
 
 def run(global_dir, network_input_size, num_classes, data,
-        minibatch_size, params, run_directory_name=None):
+        params, run_directory_name=None):
     """
     Perform a single training run, given a list of parameters as might
     be provided by e.g. hyperopt
@@ -69,7 +69,7 @@ def run(global_dir, network_input_size, num_classes, data,
 
         # we now create the generator for this epoch
         epoch_gen = helpers.generate_balanced_minibatches_multiclass(
-                data['train_X'], data['train_y'], int(minibatch_size),
+                data['train_X'], data['train_y'], int(params['minibatch_size']),
                 slice_width, augment_options=augment_options,
                 shuffle=True)
         threaded_epoch_gen = helpers.threaded_gen(epoch_gen)
