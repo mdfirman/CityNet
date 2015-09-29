@@ -106,44 +106,19 @@ def load_data(loadpath, normalisation=None, small_dataset=False, normalisation_p
     return data, num_classes
 
 
-def build_cnn(input_var, network_input_size, num_classes, params=None):
+def build_cnn(input_var, network_input_size, num_classes, params):
     '''
     Function to programmatically build a CNN in lasagne.
-    TODO - give architechture as input parameters.
     '''
+    # ensuring certain parameters are integers
+    for int_param in ['pool_size_x', 'pool_size_y', 'num_filters', 'num_dense_units', 'num_dense_layers', 'num_filter_layers']:
+        params[int_param] = int(params[int_param])
 
-    if params is not None:
-        # I don't like this setup but I'm not sure hyperopt supports a
-        # dictionary style thing...
-        _, _, _, _, input_dropout, filter_sizes, num_filters, num_filter_layers, \
-            pool_size_x, pool_size_y, dense_dropout, num_dense_layers, \
-            num_dense_units, inital_filter_layer, _, _, _, _, _ = params
-        # print input_dropout, filter_sizes, num_filters, num_filter_layers
-        # print pool_size_x, pool_size_y, dense_dropout, num_dense_layers
-        # print num_dense_units, inital_filter_layer
-    else:
-        # Some default params which work ok
-        input_dropout = 0.1
-        filter_sizes = 5
-        num_filters = 40
-        num_filter_layers = 2
-        pool_size_x = 4
-        pool_size_y = 2
-        dense_dropout = 0.5
-        num_dense_layers = 3
-        num_dense_units = 800
-        inital_filter_layer = False
-
-    print "input_dropout", input_dropout
-    print "filter_sizes",  filter_sizes
-    print "num_filters", num_filters
-    print "num_filter_layers", num_filter_layers
-    print "pool_size_x", pool_size_x
-    print "pool_size_y", pool_size_y
-    print "dense_dropout", dense_dropout
-    print "num_dense_layers", num_dense_layers
-    print "num_dense_units", num_dense_units
-    print "inital_filter_layer", inital_filter_layer
+    # print params to screen
+    print params
+    print ""
+    for key, val in params.iteritems():
+        print key.rjust(40), val
 
     nonlin_choice = lasagne.nonlinearities.very_leaky_rectify
 
@@ -151,23 +126,23 @@ def build_cnn(input_var, network_input_size, num_classes, params=None):
     network_shape = (None, 1, network_input_size[0], network_input_size[1])
     print "Making network of input size ", network_shape
     network = layers.InputLayer(shape=network_shape, input_var=input_var)
-    network = layers.dropout(network, p=input_dropout)
+    network = layers.dropout(network, p=params['input_dropout'])
 
-    if inital_filter_layer:
+    if params['inital_filter_layer']:
         network = layers.Conv2DLayer(
             network,
-            num_filters=int(num_filters),
-            filter_size=(int(filter_sizes), int(filter_sizes)),
+            num_filters=params['num_filters'],
+            filter_size=(params['filter_sizes'], params['filter_sizes']),
             nonlinearity=nonlin_choice,
             W=lasagne.init.GlorotUniform())
 
-    for _ in range(int(num_filter_layers)):
+    for _ in range(int(params['num_filter_layers'])):
 
         # see also: layers.cuda_convnet.Conv2DCCLayer
         network = layers.Conv2DLayer(
             network,
-            num_filters=int(num_filters),
-            filter_size=(int(filter_sizes), int(filter_sizes)),
+            num_filters=params['num_filters'],
+            filter_size=(params['filter_sizes'], params['filter_sizes']),
             # pad = (2, 2),
             # stride=(2, 2),
             nonlinearity=nonlin_choice,
@@ -175,18 +150,18 @@ def build_cnn(input_var, network_input_size, num_classes, params=None):
 
         network = layers.MaxPool2DLayer(
             network,
-            pool_size=(int(pool_size_x), int(pool_size_y)))
+            pool_size=(params['pool_size_x'], params['pool_size_y']))
 
-    for _ in range(int(num_dense_layers)):
+    for _ in range(params['num_dense_layers']):
 
         network = layers.DenseLayer(
-            layers.dropout(network, p=dense_dropout),
-            num_units=int(num_dense_units),
+            layers.dropout(network, p=params['dense_dropout']),
+            num_units=params['num_dense_units'],
             nonlinearity=nonlin_choice)
 
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
     network = layers.DenseLayer(
-            layers.dropout(network, p=dense_dropout),
+            layers.dropout(network, p=params['dense_dropout']),
             num_units=num_classes,
             nonlinearity=lasagne.nonlinearities.softmax)
 
@@ -194,7 +169,7 @@ def build_cnn(input_var, network_input_size, num_classes, params=None):
 
 
 # Prepare Theano variables for inputs and targets
-def prepare_network(learning_rate, network_input_size, num_classes, params=None):
+def prepare_network(network_input_size, num_classes, params):
 
     input_var = T.tensor4('inputs')
     target_var = T.ivector('targets')
@@ -216,12 +191,12 @@ def prepare_network(learning_rate, network_input_size, num_classes, params=None)
     # Create update expressions for training, i.e., how to modify the
     # parameters at each training step. Here, we'll use Stochastic Gradient
     # Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
-    params = lasagne.layers.get_all_params(network, trainable=True)
+    lasagne_params = lasagne.layers.get_all_params(network, trainable=True)
     # updates = lasagne.updates.nesterov_momentum(
     #         loss, params, learning_rate=0.000249, momentum=0.5)
     theano_lr = T.scalar('lr')
 
-    updates = lasagne.updates.rmsprop(loss, params, learning_rate=theano_lr) #0.000249
+    updates = lasagne.updates.rmsprop(loss, lasagne_params, learning_rate=theano_lr) #0.000249
 
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
@@ -278,8 +253,8 @@ def threaded_gen(generator, num_cached=50):
         item = queue.get()
 
 
-def augment_slice(slice_in, roll=True, rotate=False, flip=True,
-        volume_ramp=True, normalise=True):
+def augment_slice(slice_in, roll=False, rotate=False, flip=False,
+        vol_ramp=False, normalise=False):
     '''
     does some stuff to a single slice example to augment the dataset
     '''
@@ -321,7 +296,7 @@ def augment_slice(slice_in, roll=True, rotate=False, flip=True,
         if np.random.rand() > 0.5:
             this_slice = this_slice[:, ::-1]
 
-    if volume_ramp:
+    if vol_ramp:
         min_vol_ramp = 0.8
         max_vol_ramp = 1.2
         start_vol = np.random.rand() * (max_vol_ramp - min_vol_ramp) + min_vol_ramp
@@ -365,16 +340,6 @@ class Logger(object):
         self.out_fid.close()
 
 
-# def force_slice_length(spec, location, slice_width):
-#     '''
-#     extract a slice from a specific location, but if there isn't enough spectrogram to
-#     go around then maybe do something else... e.g. wrapping
-#     '''
-#     hww = slice_width / 2
-#     to_return = spec[:, location-hww:location+hww]
-#     return tile_pad(to_return, slice_width)
-
-
 def tile_pad(this_slice, desired_width):
     if this_slice.shape[1] == desired_width:
         return this_slice
@@ -382,7 +347,6 @@ def tile_pad(this_slice, desired_width):
         num_tiles = np.ceil(float(desired_width) / this_slice.shape[1])
         tiled = np.tile(this_slice, (1, num_tiles))
         return tiled[:, :desired_width]
-
 
 
 def iterate_minibatches(inputs, targets, batchsize, slice_width, shuffle=False):
@@ -410,7 +374,7 @@ def iterate_minibatches(inputs, targets, batchsize, slice_width, shuffle=False):
 
 
 def generate_balanced_minibatches_multiclass(
-        inputs, targets, items_per_minibatch, slice_width, augment_data=False,
+        inputs, targets, items_per_minibatch, slice_width,
         augment_options=None, shuffle=True):
 
     assert len(inputs) == len(targets)
@@ -452,8 +416,7 @@ def generate_balanced_minibatches_multiclass(
         for idx in full_idxs:
             this_image = inputs[idx]
             this_image = tile_pad(this_image, slice_width)
-            if augment_data:
-                this_image = augment_slice(this_image, **augment_options)
+            this_image = augment_slice(this_image, **augment_options)
             training_images.append(this_image)
 
         yield (cnn_utils.form_correct_shape_array(training_images), targets[full_idxs])
@@ -504,5 +467,3 @@ class LearningRate(object):
         else:
             diminuation = np.exp(-self.falloff *(epoch - self.iters_at_init))
             return (self.init - self.final) * diminuation + self.final
-
-

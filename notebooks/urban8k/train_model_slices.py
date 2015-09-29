@@ -3,6 +3,7 @@ import numpy as np
 import os
 import sys
 import time
+import collections
 
 # Plotting
 import matplotlib.pyplot as plt
@@ -38,15 +39,10 @@ slices = True
 
 #########################
 # KEY PARAMS
-num_epochs = 120
-small_dataset = False
+small_dataset = True
 max_evals = 128  # hyperopt
 
 # should make minibatch size a multiple of 10 really
-minibatch_size = 80 # optimise
-augment_data = True
-
-do_median_normalise = False
 
 # what size will the CNN get ultimately? - optimise this!
 network_input_size = (128, slice_width)
@@ -55,10 +51,45 @@ network_input_size = (128, slice_width)
 # Overall setup
 global_dir = helpers.create_numbered_folder('results/hyperopt_run_%04d/')
 
+# defining default parameters, which will be overwritten if hyperopting
+default_params = collections.OrderedDict((
+    ('initial_learning_rate', 0.000305583),
+    ('final_learning_rate_fraction', 0.138658),
+    ('epochs_of_initial', 35),
+    ('falloff', 0.0586),
+    ('input_dropout', 0.03909),
+    ('initial_filter_layer', False),
+    ('filter_sizes', 3),
+    ('num_filters', 60),
+    ('num_filter_layers', 2),
+    ('pool_size_x', 3),
+    ('pool_size_y', 4),
+    ('dense_dropout', 0.58768),
+    ('num_dense_layers', 3),
+    ('num_dense_units', 718),
+    ('augment_flip', False),
+    ('augment_roll', True),
+    ('augment_vol_ramp', False),
+    ('do_median_normalise', False),
+    ('num_epochs', 120),
+    ('minibatch_size', 80)
+))
 
-def run_wrapper(params):
+
+# set up the hyperopt search space as a dictionary first...
+# (Do this before run_wrapper so it has access to the variable names)
+hopt_dict = collections.OrderedDict((
+     ('inital_filter_layer', (hp.choice, [False, False])),
+     ('norm_mean_std', (hp.uniform, 0, 60)),
+     ('norm_std_std', (hp.uniform, 0, 60))
+))
+
+
+def run_wrapper(hopt_params):
     """
     This is the wrappper which is minimised
+    hopt_params
+        vector of parameters from the hyperopt
     """
     global run_counter
     global o_f
@@ -69,28 +100,34 @@ def run_wrapper(params):
 
     start_time = time.time()
 
-    # if True:
-    try:
+    # use the default params, except where values have been defined in hopt_params:
+    # (basically this is the magic to get around hyoperopt
+    # a) not allowing defaults and
+    # b) giving guesses as a vector not a dict )
+    for key, val in zip(hopt_dict, hopt_params):
+        default_params[key] =val
+
+    # try:
+    if True:
         # loading the data
         loadpath = base_path + 'splits_128/split' + str(split) + '.pkl'
         data, num_classes = helpers.load_data(
-            loadpath, normalisation='local_normalisation',
+            loadpath, normalisation='stowell_half',
             small_dataset=small_dataset,
-            normalisation_params=(params[-2], params[-1]))
+            normalisation_params=(
+                default_params['norm_mean_std'], default_params['norm_std_std']))
 
         # form a proper validation set here...
         val_X, val_y = helpers.form_slices_validation_set(
-            data, slice_width, do_median_normalise)
+            data, slice_width, default_params['do_median_normalise'])
 
         final_summary = perform_run.run(
             global_dir,
             network_input_size=network_input_size,
             num_classes=num_classes,
             data=data,
-            num_epochs=num_epochs,
-            do_median_normalise=do_median_normalise,
-            minibatch_size=minibatch_size,
-            params=params)
+            minibatch_size=default_params['minibatch_size'],
+            params=default_params)
 
         print "\n\n",
         for key, val in final_summary.iteritems():
@@ -101,7 +138,7 @@ def run_wrapper(params):
             final_summary['best_val_loss'],
             final_summary['best_val_acc'],
             final_summary['final_val_acc']
-            ] + list( params ))
+            ] + list( default_params.itervalues() ))
         o_f.flush()
 
         return {
@@ -109,13 +146,13 @@ def run_wrapper(params):
             'status': STATUS_OK
             }
 
-    except Exception as e:
-    # else:
+    # except Exception as e:
+    else:
 
         print "Failed run: ", str(e)
         print "Took %0.3fs" % (time.time() - start_time)
 
-        writer.writerow(['FAILURE', 'FAILURE', 'FAILURE'] + list(params))
+        writer.writerow(['FAILURE', 'FAILURE', 'FAILURE'] + list(default_params))
         o_f.flush()
 
         return {
@@ -124,28 +161,12 @@ def run_wrapper(params):
             'exception': str(e)
             }
 
-# set up the hyperopt search space
-space = (
-    # hp.uniform( 'initial_learning_rate',  0.0001,  0.0005),
-    # hp.uniform( 'final_learning_rate_fraction', 0.08, 0.15),
-    # hp.quniform( 'epochs_of_initial', 25, 125, 5),
-    # hp.uniform( 'falloff', 0.01, 0.2),
-    # hp.uniform( 'input_dropout', 0.0, 0.1),
-    # hp.choice( 'filter_sizes', [3, 4, 5]),
-    # hp.quniform( 'num_filters', 32, 80, 1),
-    # hp.choice( 'num_filter_layers', [1, 2, 3]),
-    # hp.choice( 'pool_size_x', [2, 3, 4, 5, 6]),
-    # hp.choice( 'pool_size_y', [2, 3, 4, 5, 6]),
-    # hp.uniform( 'dense_dropout', 0.3, 0.7),
-    # hp.choice( 'num_dense_layers', [2, 3, 4]),
-    # hp.quniform( 'num_dense_units', 500, 1000, 1),
-    hp.choice( 'inital_filter_layer', [False, False]),
-    # hp.choice( 'augment_flip', [False, True]),
-    # hp.choice( 'augment_roll', [False, True]),
-    # hp.choice( 'augment_vol_ramp', [False, True]),
-    hp.uniform( 'norm_mean_std', 0, 60),
-    hp.uniform( 'norm_std_std', 0, 60)
-)
+# convert the dictionary to a search space:
+# equivalent to:
+#space = [ hp.uniform( 'learning_rate',  0.0001,  0.0005), <...etc> ]
+space = []
+for key, val in hopt_dict.iteritems():
+    space.append(val[0](key, *val[1:]))
 
 # Hyperopt params and setup
 output_file = global_dir + 'hyperopt_log.csv'
@@ -153,18 +174,17 @@ output_file = global_dir + 'hyperopt_log.csv'
 global run_counter
 run_counter = 0
 
-headers = [ 'inital_filter_layer', 'norm_mean_std', 'norm_std_std']
-
 o_f = open( output_file, 'wb' )
 writer = csv.writer( o_f )
-writer.writerow( headers )
+writer.writerow( list( hopt_dict.keys() ) )
 o_f.flush()
 
 if False:
     trials = Trials()
 else:
     print "\n\n***\n\nLoading trials from disk...\n\n***\n\n"
-    trials = pickle.load(open("/home/michael/projects/engaged_hackathon/notebooks/urban8k/results/hyperopt_run_0005/trials.pkl"))
+    trials = pickle.load(open("/home/michael/projects/engaged_hackathon/"
+        "notebooks/urban8k/results/hyperopt_run_0005/trials.pkl"))
 
 
 class SaveTrials:
@@ -192,3 +212,25 @@ with SaveTrials():
         algo=tpe.suggest,
         max_evals=max_evals,
         trials=trials)
+
+
+
+
+# space = (
+#     # hp.uniform( 'initial_learning_rate',  0.0001,  0.0005),
+#     # hp.uniform( 'final_learning_rate_fraction', 0.08, 0.15),
+#     # hp.quniform( 'epochs_of_initial', 25, 125, 5),
+#     # hp.uniform( 'falloff', 0.01, 0.2),
+#     # hp.uniform( 'input_dropout', 0.0, 0.1),
+#     # hp.choice( 'filter_sizes', [3, 4, 5]),
+#     # hp.quniform( 'num_filters', 32, 80, 1),
+#     # hp.choice( 'num_filter_layers', [1, 2, 3]),
+#     # hp.choice( 'pool_size_x', [2, 3, 4, 5, 6]),
+#     # hp.choice( 'pool_size_y', [2, 3, 4, 5, 6]),
+#     # hp.uniform( 'dense_dropout', 0.3, 0.7),
+#     # hp.choice( 'num_dense_layers', [2, 3, 4]),
+#     # hp.quniform( 'num_dense_units', 500, 1000, 1),
+#     # hp.choice( 'augment_flip', [False, True]),
+#     # hp.choice( 'augment_roll', [False, True]),
+#     # hp.choice( 'augment_vol_ramp', [False, True]),
+# )

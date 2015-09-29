@@ -21,55 +21,26 @@ sys.path.append(os.path.expanduser('~/projects/engaged_hackathon/'))
 from engaged.features import cnn_utils
 
 
-def run(global_dir, network_input_size, num_classes, data, num_epochs,
-        do_median_normalise, minibatch_size, augment_data=True, params=None, run_directory_name=None):
+def run(global_dir, network_input_size, num_classes, data,
+        minibatch_size, params, run_directory_name=None):
     """
     Perform a single training run, given a list of parameters as might
     be provided by e.g. hyperopt
     """
 
-    if params is not None:
-        temp_params = [0.00030558346816, 0.13865800304103, 35, 0.05863104967699, 0.03909097055997,
-            3, 60, 2, 3, 4, 0.6880736253895, 3, 800, None, True, False, True,
-            None, None]
-        temp_params[-2] = params[1] # norm_mean_std
-        temp_params[-1] = params[2] # norm_std_std
-        temp_params[-6] = params[0] # initial filter layer
-        params = temp_params
-
-        learning_rate = params[0]
-        final_learning_rate_fraction = params[1]
-        epochs_of_initial = params[2]
-        falloff = params[3]
-        augment_options = {
-            'roll': params[-3],
-            'rotate': False,
-            'flip': params[-5],
-            'volume_ramp': params[-4],
-            'normalise': False
-            }
-        print "Learning rate is ", learning_rate
-    else:
-        learning_rate = 0.00025
-        final_learning_rate_fraction = 0.1
-        epochs_of_initial = 50
-        falloff = 0.2
-        augment_options = {
-            'roll': True,
-            'rotate': False,
-            'flip': False,
-            'volume_ramp': True,
-            'normalise': False
-            }
+    # must create the augment_options from the params (a limitation of a flat parameters dictionary)
+    augment_options = {}
+    for augment_type in ['flip', 'roll', 'vol_ramp']:
+        augment_options[augment_type] = params['augment_' + augment_type]
 
     # forming validation data
     slice_width = network_input_size[1]
     val_X, val_y = helpers.form_slices_validation_set(
-                data, slice_width, do_median_normalise, 'val_')
+                data, slice_width, params['do_median_normalise'], 'val_')
 
     # setting up the network
     network, train_fn, predict_fn, val_fn, input_var, target_var, loss = \
-        helpers.prepare_network(learning_rate, network_input_size, num_classes, params)
+        helpers.prepare_network(network_input_size, num_classes, params)
 
     best_validation_loss = 10000
     best_model = None
@@ -84,10 +55,13 @@ def run(global_dir, network_input_size, num_classes, data, num_epochs,
             os.makedirs(this_run_dir)
 
     lgr = helpers.Logger(this_run_dir + 'results_log.txt')
-    lr = helpers.LearningRate(learning_rate,
-        learning_rate * final_learning_rate_fraction, epochs_of_initial, falloff)
+    lr = helpers.LearningRate(
+        params['initial_learning_rate'],
+        params['initial_learning_rate'] * params['final_learning_rate_fraction'],
+        params['epochs_of_initial'],
+        params['falloff'])
 
-    for epoch in range(num_epochs):
+    for epoch in range(params['num_epochs']):
 
         # In each epoch, we do a full pass over the training data:
         train_loss = train_batches = 0
@@ -96,7 +70,7 @@ def run(global_dir, network_input_size, num_classes, data, num_epochs,
         # we now create the generator for this epoch
         epoch_gen = helpers.generate_balanced_minibatches_multiclass(
                 data['train_X'], data['train_y'], int(minibatch_size),
-                slice_width, augment_data=augment_data, augment_options=augment_options,
+                slice_width, augment_options=augment_options,
                 shuffle=True)
         threaded_epoch_gen = helpers.threaded_gen(epoch_gen)
 
