@@ -12,10 +12,12 @@ pool_size_y: 4
 dense_dropout: 0.58768
 num_dense_layers: 3
 num_dense_units: 718
-augment_flip: False
+augment_flip: True
 augment_roll: True
 augment_vol_ramp: False
 do_median_normalise: False
 num_epochs: 120
 minibatch_size: 80
 normalisation: 'stowell_half'
+norm_mean_std: 40
+norm_std_std: 15

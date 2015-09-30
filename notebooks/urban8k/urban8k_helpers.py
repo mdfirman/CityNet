@@ -128,7 +128,7 @@ def build_cnn(input_var, network_input_size, num_classes, params):
     network = layers.InputLayer(shape=network_shape, input_var=input_var)
     network = layers.dropout(network, p=params['input_dropout'])
 
-    if params['inital_filter_layer']:
+    if params['initial_filter_layer']:
         network = layers.Conv2DLayer(
             network,
             num_filters=params['num_filters'],

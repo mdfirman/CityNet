@@ -4,6 +4,7 @@
 import numpy as np
 import os
 import sys
+import yaml
 
 # CNN bits
 # import theano
@@ -38,8 +39,7 @@ network_input_size = (128, slice_width)
 ##################################
 # Model params (as loaded from one row of a hyperopt file)
 
-params = [0.0002791786739, 0.15, 40, 0.04, 0.02271767800627,
-            5, 78, 2, 6, 3, 0.58768842676161, 3, 718, False, False, True, True]
+params = yaml.load(open('default_params.yaml'))
 
 ###############################################################
 # Overall setup
@@ -64,8 +64,6 @@ split_num = 2
 # global_dir = helpers.create_numbered_folder('results/normalisation_run_%04d/')
 global_dir = 'results/normalisation_run_0000/'
 
-
-#
 strategies = ['full_whiten']
             # None, 'stowell_half', 'stowell_half_rescale', 'stowell_full',
             #   'overall_median', 'overall_median_rescale', 'sum_to_one',
@@ -90,11 +88,7 @@ for count, normalisation_strategy in enumerate(strategies):
         network_input_size=network_input_size,
         num_classes=num_classes,
         data=data,
-        num_epochs=num_epochs,
-        do_median_normalise=False,
-        minibatch_size=minibatch_size,
         params=params,
-        augment_data=augment_data,
         run_directory_name=run_directory_name)
 
     # Don't need to save anything here, as perform_run.run should do all of this for us
