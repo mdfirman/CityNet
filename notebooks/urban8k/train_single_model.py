@@ -4,6 +4,7 @@
 import numpy as np
 import os
 import sys
+import yaml
 
 # CNN bits
 import urban8k_helpers as helpers
@@ -27,9 +28,7 @@ slice_width = 128
 network_input_size = (128, slice_width)
 
 ##################################
-# Model params (as loaded from one row of a hyperopt file)
-
-# todo sort this out so it's not like this
+# Model params
 params = yaml.load(open('default_params.yaml'))
 
 ###############################################################
