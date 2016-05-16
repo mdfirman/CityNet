@@ -63,15 +63,20 @@ for val_fold, test_fold in ((1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 
 
     net = {}
     net['input'] = InputLayer((None, data['train']['X'].shape[1], 224, 224))
-    net['input2'] = PoolLayer(net['input'], 2, mode='average_inc_pad')
     net['input_logged'] = Log1Plus(net['input2'])
+
     net['conv1_1'] = ConvLayer(net['input_logged'], 32, 3, nonlinearity=elu)
     net['conv1_2'] = ConvLayer(net['conv1_1'], 32, 3, nonlinearity=elu)
     net['pool1'] = PoolLayer(net['conv1_2'], 4)
+
     net['conv2_1'] = ConvLayer(net['pool1'], 32, 3, nonlinearity=elu)
     net['conv2_2'] = ConvLayer(net['conv2_1'], 32, 3, nonlinearity=elu)
     net['pool2'] = PoolLayer(net['conv2_2'], 4)
-    net['fc6'] = DenseLayer(net['pool2'], num_units=256, nonlinearity=elu)
+
+    net['conv3_1'] = ConvLayer(net['pool2'], 32, 3, nonlinearity=elu)
+    net['pool3'] = PoolLayer(net['conv3_1'], 2)
+
+    net['fc6'] = DenseLayer(net['pool3'], num_units=256, nonlinearity=elu)
     net['fc6'] = DropoutLayer(net['fc6'], p=0.5)
     net['fc7'] = DenseLayer(net['fc6'], num_units=256, nonlinearity=elu)
     net['fc7'] = DropoutLayer(net['fc7'], p=0.5)
@@ -83,7 +88,7 @@ for val_fold, test_fold in ((1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 
 
     network = nolearn.lasagne.NeuralNet(
         layers=net['prob'],
-        max_epochs=2,
+        max_epochs=100,
         update=lasagne.updates.adam,
         update_learning_rate=0.001,
         verbose=1,
