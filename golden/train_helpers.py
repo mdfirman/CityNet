@@ -6,7 +6,6 @@ import lasagne
 import theano.tensor as T
 import nolearn.lasagne
 from ml_helpers import minibatch_generators as mbg
-from ml_helpers.evaluation import plot_confusion_matrix
 import matplotlib.pyplot as plt
 
 
@@ -116,39 +115,6 @@ class HelpersBaseClass(object):
 
     def __init__(self, logging_dir):
         self.savedir = force_make_dir(logging_dir + self.subdir)
-
-
-class ConfMatrix(HelpersBaseClass):
-    subdir = "/conf_mats/"
-
-    def __init__(self, logging_dir, cls_labels):
-        super(ConfMatrix, self).__init__(logging_dir)
-        self.cls_labels = cls_labels
-
-    def __call__(self, net, history):
-        '''Plots and saves a confusion matrix'''
-        y_pred = np.argmax(net.y_pred_validation, axis=1)
-        y_true = net.y_true_validation
-
-        title = "Confusion matrix, epoch %d" % (len(history) - 1)
-        plt.figure(figsize=(10, 10))
-        plot_confusion_matrix(y_true, y_pred, title=title, normalise=True,
-            cls_labels=self.cls_labels)
-
-        savepath = self.savedir + "conf_mat_%05d.png" % (len(history) - 1)
-        plt.savefig(savepath)
-        plt.close()
-
-
-class SavePredictions(HelpersBaseClass):
-    subdir = "/predictions/"
-
-    def __call__(self, net, history):
-        if (len(history) - 1) % 5 == 0:
-            y_pred = net.y_pred_validation
-            y_true = net.y_true_validation
-            savepath = self.savedir + "predictions_%05d.pkl" % (len(history) - 1)
-            pickle.dump([y_true, y_pred], open(savepath, 'w'), -1)
 
 
 class SaveHistory(HelpersBaseClass):
