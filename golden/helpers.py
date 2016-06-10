@@ -89,3 +89,78 @@ class SpecSampler(object):
         else:
             # remove ones we couldn't get
             return X.astype(np.float32), y.astype(np.int32)
+
+
+class HelpersBaseClass(object):
+    # sub dir is a class attribute so subclasses can override it
+    subdir = ""
+
+    def __init__(self, logging_dir):
+        self.savedir = force_make_dir(logging_dir + self.subdir)
+
+
+class ConfMatrix(HelpersBaseClass):
+    subdir = "/conf_mats/"
+
+    def __init__(self, logging_dir, cls_labels):
+        super(ConfMatrix, self).__init__(logging_dir)
+        self.cls_labels = cls_labels
+
+    def __call__(self, net, history):
+        '''Plots and saves a confusion matrix'''
+        y_pred = np.argmax(net.y_pred_validation, axis=1)
+        y_true = net.y_true_validation
+
+        title = "Confusion matrix, epoch %d" % (len(history) - 1)
+        plt.figure(figsize=(10, 10))
+        plot_confusion_matrix(y_true, y_pred, title=title, normalise=True,
+            cls_labels=self.cls_labels)
+
+        savepath = self.savedir + "conf_mat_%05d.png" % (len(history) - 1)
+        plt.savefig(savepath)
+        plt.close()
+
+
+class SavePredictions(HelpersBaseClass):
+    subdir = "/predictions/"
+
+    def __call__(self, net, history):
+        if (len(history) - 1) % 5 == 0:
+            y_pred = net.y_pred_validation
+            y_true = net.y_true_validation
+            savepath = self.savedir + "predictions_%05d" % (len(history) - 1)
+            pickle.dump([y_true, y_pred], open(savepath, 'w'), -1)
+
+
+class SaveHistory(HelpersBaseClass):
+    def __call__(self, net, history):
+        '''
+        Dumps nolearn history to disk, one line at a time
+        '''
+        savepath = self.savedir + "history.yaml"
+
+        # handling numpy bool values
+        for key, item in history[-1].iteritems():
+            if type(item) == np.bool_:
+                history[-1][key] = bool(item)
+
+        yaml.dump(history[-1], open(savepath, 'a'))
+
+
+class SaveWeights(HelpersBaseClass):
+    subdir = "/weights/"
+
+    def __init__(self, logging_dir, save_weights_every, new_file_every):
+        super(SaveWeights, self).__init__(logging_dir)
+        self.save_weights_every = save_weights_every
+        self.new_file_every = new_file_every
+
+    def __call__(self, net, history):
+        '''
+        Dumps weights to disk. Saves weights every epoch, but only starts a
+        new file every X epochs.
+        '''
+        if (len(history) - 1) % self.save_weights_every == 0:
+            filenum = (len(history) - 1) / self.new_file_every
+            savepath = self.savedir + "weights_%06d.pkl" % filenum
+            net.save_params_to(savepath)
