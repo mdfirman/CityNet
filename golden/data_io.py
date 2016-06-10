@@ -1,6 +1,7 @@
 import os
 import cPickle as pickle
 import yaml
+import numpy as np
 from scipy.ndimage.interpolation import zoom
 
 base = '/media/michael/Seagate/engage/alison_data/golden_set/'

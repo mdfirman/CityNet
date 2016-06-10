@@ -1,8 +1,13 @@
+import numpy as np
+import os
+import yaml
+import cPickle as pickle
 import lasagne
 import theano.tensor as T
 import nolearn.lasagne
 from ml_helpers import minibatch_generators as mbg
-import numpy as np
+from ml_helpers.evaluation import plot_confusion_matrix
+import matplotlib.pyplot as plt
 
 
 def force_make_dir(dirpath):
@@ -38,8 +43,8 @@ class SpecSampler(object):
         blank_label = np.zeros(hww) - 1
         self.labels = np.hstack([blank_label] + labels + [blank_label])
 
-        which_spec = [ii * np.ones_like(lab).astype(np.int32) for ii, lab in enumerate(labels)]
-        self.which_spec = np.hstack([blank_label] + which_spec + [blank_label])
+        which_spec = [ii * np.ones_like(lab) for ii, lab in enumerate(labels)]
+        self.which_spec = np.hstack([blank_label] + which_spec + [blank_label]).astype(np.int32)
 
         if learn_log:
             self.medians = np.zeros((len(specs), specs[0].shape[0], hww*2))
@@ -77,7 +82,9 @@ class SpecSampler(object):
         # doing augmentation
         if self.do_aug:
             if self.learn_log:
-                X *= (1.0 + np.random.randn(num_samples, 1, 1, 1) * 0.1)
+                mult = (1.0 + np.random.randn(num_samples, 1, 1, 1) * 0.1)
+                mult = np.clip(mult, 0.1, 200)
+                X *= mult
             else:
                 X *= (1.0 + np.random.randn(num_samples, 1, 1, 1) * 0.1)
                 X += np.random.randn(num_samples, 1, 1, 1) * 0.05
@@ -89,6 +96,18 @@ class SpecSampler(object):
         else:
             # remove ones we couldn't get
             return X.astype(np.float32), y.astype(np.int32)
+
+
+class MyBatch(nolearn.lasagne.BatchIterator):
+    def __iter__(self):
+        for _ in range(32):
+            yield self.X.sample(self.batch_size)
+
+
+class MyBatchTest(nolearn.lasagne.BatchIterator):
+    def __iter__(self):
+        for idx in range(128):
+            yield self.X.sample(self.batch_size, seed=idx)
 
 
 class HelpersBaseClass(object):
@@ -128,23 +147,27 @@ class SavePredictions(HelpersBaseClass):
         if (len(history) - 1) % 5 == 0:
             y_pred = net.y_pred_validation
             y_true = net.y_true_validation
-            savepath = self.savedir + "predictions_%05d" % (len(history) - 1)
+            savepath = self.savedir + "predictions_%05d.pkl" % (len(history) - 1)
             pickle.dump([y_true, y_pred], open(savepath, 'w'), -1)
 
 
 class SaveHistory(HelpersBaseClass):
+    def __init__(self, logging_dir):
+        super(SaveHistory, self).__init__(logging_dir)
+        self.savepath = self.savedir + "history.yaml"
+        with open(self.savepath, 'w'):
+            pass
+
     def __call__(self, net, history):
         '''
         Dumps nolearn history to disk, one line at a time
         '''
-        savepath = self.savedir + "history.yaml"
-
         # handling numpy bool values
         for key, item in history[-1].iteritems():
             if type(item) == np.bool_:
                 history[-1][key] = bool(item)
 
-        yaml.dump(history[-1], open(savepath, 'a'))
+        yaml.dump([history[-1]], open(self.savepath, 'a'))
 
 
 class SaveWeights(HelpersBaseClass):

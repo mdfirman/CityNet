@@ -24,38 +24,35 @@ import theano
 from lasagne.layers import batch_norm, ElemwiseSumLayer, ExpressionLayer, DimshuffleLayer
 import theano.tensor as T
 
-from helpers import SpecSampler, Log1Plus
-from data_io import load_data, load_splits
+from train_helpers import SpecSampler, Log1Plus
+import train_helpers
+import data_io
+from ml_helpers import ui
 
-HWW = 15
-SPEC_HEIGHT = 300
-LEARN_LOG = True
+RUN_TYPE = 'standard_spec'
+
+logging_dir = data_io.base + 'predictions/%s/' % RUN_TYPE
+train_helpers.force_make_dir(logging_dir)
+sys.stdout = ui.Logger(logging_dir + 'log.txt')
+
+HWW = 10
+SPEC_HEIGHT = 330
+LEARN_LOG = 1
 DO_AUGMENTATION = True
 DO_BATCH_NORM = True
 NUM_FILTERS = 32
 NUM_DENSE_UNITS = 64
 CLASSNAME = 'anthrop'
+WIGGLE_ROOM = 2
 
 # loading data
-train_files, test_files = load_splits()
-train_data, test_data = load_data(train_files, test_files, SPEC_HEIGHT, LEARN_LOG, CLASSNAME)
+train_files, test_files = data_io.load_splits()
+train_data, test_data = data_io.load_data(train_files, test_files, SPEC_HEIGHT, LEARN_LOG, CLASSNAME)
 print len(test_data[0]), len(train_data[0])
 
 # creaging samplers and batch iterators
 train_sampler = SpecSampler(train_data[0], train_data[1], HWW, DO_AUGMENTATION, LEARN_LOG)
 test_sampler = SpecSampler(test_data[0], test_data[1], HWW, False, LEARN_LOG)
-
-class MyBatch(nolearn.lasagne.BatchIterator):
-    def __iter__(self):
-        for _ in range(32):
-            yield self.X.sample(self.batch_size)
-
-
-class MyBatchTest(nolearn.lasagne.BatchIterator):
-    def __iter__(self):
-        for idx in range(128):
-            yield self.X.sample(self.batch_size, seed=idx)
-
 
 class MyTrainSplit(nolearn.lasagne.TrainSplit):
     # custom data split
@@ -78,14 +75,15 @@ if LEARN_LOG:
 
     # logging the median and multiplying by -1
     net['input_med'] = InputLayer((None, 1, SPEC_HEIGHT, HWW*2), name='input_med')
-    net['med_logged'] = Log1Plus(net['input_med'], off=net['input_logged'].off, mult=net['input_logged'].mult)
+    net['med_logged'] = Log1Plus(
+        net['input_med'], off=net['input_logged'].off, mult=net['input_logged'].mult)
     net['med_logged'] = ExpressionLayer(net['med_logged'], lambda X: -X)
 
     # summing the logged input with the negative logged median
     net['input'] = ElemwiseSumLayer((net['input_logged'], net['med_logged']))
 
 net['conv1_1'] = batch_norm(
-    ConvLayer(net['input'], NUM_FILTERS, (SPEC_HEIGHT - 6, 6), nonlinearity=vlr))
+    ConvLayer(net['input'], NUM_FILTERS, (SPEC_HEIGHT - WIGGLE_ROOM, 6), nonlinearity=vlr))
 net['pool1'] = PoolLayer(net['conv1_1'], pool_size=(2, 2), stride=(2, 2), mode='max')
 net['pool1'] = DropoutLayer(net['pool1'], p=0.5)
 net['conv1_2'] = batch_norm(ConvLayer(net['pool1'], NUM_FILTERS, (1, 3), nonlinearity=vlr))
@@ -99,16 +97,24 @@ net['fc7'] = DropoutLayer(net['fc7'], p=0.5)
 net['fc8'] = DenseLayer(net['fc7'], num_units=2, nonlinearity=None)
 net['prob'] = NonlinearityLayer(net['fc8'], softmax)
 
+
+plot_conf_mat = train_helpers.ConfMatrix(logging_dir, ['None', CLASSNAME])
+save_history = train_helpers.SaveHistory(logging_dir)
+save_predictions = train_helpers.SavePredictions(logging_dir)
+save_weights = train_helpers.SaveWeights(logging_dir, 2, 20)
+
 net = nolearn.lasagne.NeuralNet(
     layers=net['prob'],
-    max_epochs=500,
+    max_epochs=100,
     update=lasagne.updates.adam,
     update_learning_rate=0.0005,
 #     update_momentum=0.975,
     verbose=1,
-    batch_iterator_train=MyBatch(128),
-    batch_iterator_test=MyBatchTest(128),
+    batch_iterator_train=train_helpers.MyBatch(128),
+    batch_iterator_test=train_helpers.MyBatchTest(128),
     train_split=MyTrainSplit(None),
+    custom_epoch_scores=[('fake', lambda x, y: 0.0)],
+    on_epoch_finished=[plot_conf_mat, save_history, save_predictions, save_weights],
     check_input=False
 )
 net.fit(None, None)
