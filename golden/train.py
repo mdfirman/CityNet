@@ -38,8 +38,8 @@ train_helpers.force_make_dir(logging_dir)
 sys.stdout = ui.Logger(logging_dir + 'log.txt')
 
 # parameters... these could probably be hyperopted
-CLASSNAME = 'biotic'
-HWW = 5
+CLASSNAME = 'anthrop'#biotic
+HWW = 10
 SPEC_HEIGHT = 330
 LEARN_LOG = 0
 DO_AUGMENTATION = True
@@ -49,7 +49,7 @@ NUM_DENSE_UNITS = 64
 CONV_FILTER_WIDTH = 4
 WIGGLE_ROOM = 5
 MAX_EPOCHS = 50
-LEARNING_RATE = 0.0005
+LEARNING_RATE = 0.001
 
 # loading data
 train_files, test_files = data_io.load_splits()

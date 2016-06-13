@@ -64,11 +64,14 @@ class SpecSampler(object):
         # if seed is not None:
         #     np.random.seed(seed)
 
+        # take a just a quarter of all +ve labels each epoch
+        class_size = np.sum(self.labels==1) / 4
+
         # now, loop over all the positives as batches
         idxs = np.where(self.labels >= 0)[0]
         for sampled_locs, y in mbg.minibatch_iterator(
                 idxs, self.labels[idxs], self.batch_size,
-                randomise=self.randomise, balanced=True, balance_using='smallest'):
+                randomise=self.randomise, balanced=True, class_size=class_size):
             # print y.mean(), self.labels[idxs].shape, self.labels[idxs].sum(), np.unique(self.labels[idxs])
 
             # extract the specs
