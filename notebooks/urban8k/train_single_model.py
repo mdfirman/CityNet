@@ -24,7 +24,7 @@ base_path = '/media/michael/Seagate/urban8k/'
 small_dataset = False
 
 # what size will the CNN get ultimately? - optimise this!
-slice_width = 128
+slice_width = 256
 network_input_size = (128, slice_width)
 
 ##################################
@@ -44,7 +44,7 @@ normalisation_strategy = 'stowell_half'
 print 'Performing split_%d' % (split_num)
 
 # loading the data
-loadpath = base_path + 'splits_128/split' + str(split_num) + '.pkl'
+loadpath = base_path + 'splits_256/split' + str(split_num) + '.pkl'
 data, num_classes = helpers.load_data(
     loadpath,
     normalisation=params['normalisation'],

@@ -2,7 +2,7 @@ import numpy as np
 
 def spectrogram(wave, sampling_rate, nfft, spec_sample_rate, HPF=None,
     LPF=None, window_type='hamming', convert_to_mel=False, mel_bins=50,
-    stowell_normalise=False):
+    stowell_normalise=False, scaler=1.0):
     """
     Compute spectrogram and compute log.
 
@@ -27,17 +27,31 @@ def spectrogram(wave, sampling_rate, nfft, spec_sample_rate, HPF=None,
     # if noverlap >= nfft:
         # raise Exception('Overlap is too high relative to the nfft!')
 
-    # Get all windows of x with length n as a single array, using strides to avoid data duplication
+    # if the wav signal is too short, then wrap it to make it long enough to do at least one sample
+    if wave.shape[0] < nfft * 2:
+        num_tiles = np.ceil(float(nfft * 2) / wave.shape[0])
+        wave_tiled = np.tile(wave, (1, num_tiles))
+        wave = wave_tiled[:, :slice_width]
 
-    # shape = (nfft, (wave.shape[-1]-noverlap)//step)
-    shape = (nfft, (wave.shape[-1]-nfft-step)//step)
+    # Get all windows of x with length n as a single array, using strides to avoid data duplication
+    shape = (nfft, (wave.shape[0]-nfft+1)//step)
     strides = (wave.strides[0], step*wave.strides[0])
 
     x_wins = np.lib.stride_tricks.as_strided(wave, shape=shape, strides=strides)
+    if x_wins.shape[1] == 0:
+        print x_wins.shape
+        print wave.shape
+        print shape
 
     # Apply hamming window
     if window_type == 'hamming':
+        print step
         x_wins_ham = np.hamming(x_wins.shape[0])[..., np.newaxis] * x_wins
+        print x_wins_ham.shape
+        # x_wins_ham = x_wins_ham[::scaler, :]
+        x_wins_ham = x_wins_ham.reshape(
+            x_wins_ham.shape[0]/scaler, scaler, x_wins_ham.shape[1])
+        x_wins_ham = x_wins_ham.mean(1)
     else:
         raise Exception('Window type %s not implemented' % window_type)
 

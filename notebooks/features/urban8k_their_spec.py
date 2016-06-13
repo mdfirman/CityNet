@@ -19,13 +19,14 @@ import socket
 from helpers import Log1Plus, MyTrainSplit, MyBatch, force_make_dir
 from ml_helpers import evaluation
 import librosa
+from sklearn.metrics import log_loss
 
 if socket.gethostname() == 'biryani':
     base = '/media/michael/Seagate/engage/urban8k/'
 else:
     base = '/home/mfirman/Data/audio/urban8k/'
 
-base_logging_dir = base + 'dopey_runs/their_specs/'
+base_logging_dir = base + 'dopey_runs/their_specs2/'
 
 # loading data
 all_data = pickle.load(open(base + 'paper_specs.pkl'))
@@ -80,7 +81,7 @@ for val_fold, test_fold in ((1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 
 
     net = {}
     net['input'] = InputLayer((None, 2, 60, 41))
-    net['conv1_0'] = ConvLayer(net['input'], 32, (3, 3), nonlinearity=vlr)
+    net['conv1_0'] = ConvLayer(net['input'], 32, (3, 3), nonlinearity=vlr, pad='same')
     net['conv1_1'] = ConvLayer(net['conv1_0'], 80, (57, 6), nonlinearity=vlr)
     net['pool1'] = PoolLayer(net['conv1_1'], pool_size=(4, 3), stride=(1, 3))
     net['pool1'] = DropoutLayer(net['pool1'], p=0.5)
@@ -96,14 +97,63 @@ for val_fold, test_fold in ((1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 
     logging_dir = base_logging_dir + 'val_fold_%02d/' % val_fold
     force_make_dir(logging_dir)
 
+    # setting up evaluation
+    all_filenames = []
+    for fold_id in splits['val']:
+        idxs = np.where(np.array(all_data['fold'] == fold_id))[0]
+        all_filenames += [all_data['filename'][xx] for xx in idxs]
+
+    idx_to_filename = {idx:fname for idx, fname in enumerate(all_filenames)}
+
+
+    def per_wav_accuracy(_, y_preds):
+
+        filename_arrs = collections.defaultdict(list)
+        filename_means = collections.defaultdict(list)
+        for idx, pred in enumerate(y_preds):
+            fname = idx_to_filename[idx]
+            filename_arrs[fname].append(pred)
+
+        for key in filename_arrs:
+            filename_means[key] = np.mean(np.atleast_2d(np.vstack(filename_arrs[key])), 0)
+
+        # now predictions
+        fname_to_preds = {fname: np.argmax(preds) for fname, preds in filename_means.iteritems()}
+
+        # now evaluate
+        gt = {fname:pred for fname, pred in zip(all_filenames, data['val']['y'])}
+        return np.mean([fname_to_preds[fname] == gt[fname] for fname in gt])
+
+    def per_wav_loss(_, y_preds):
+
+        filename_arrs = collections.defaultdict(list)
+        filename_means = collections.defaultdict(list)
+        for idx, pred in enumerate(y_preds):
+            fname = idx_to_filename[idx]
+            filename_arrs[fname].append(pred)
+
+        for key in filename_arrs:
+            filename_means[key] = np.mean(np.atleast_2d(np.vstack(filename_arrs[key])), 0)
+
+        # now predictions
+        fname_to_preds = {fname: preds for fname, preds in filename_means.iteritems()}
+
+        # now evaluate
+        gt = {fname:pred for fname, pred in zip(all_filenames, data['val']['y'])}
+        A  = np.vstack([fname_to_preds[fname] for fname in gt])
+        B  = np.hstack([gt[fname] for fname in gt])
+        return log_loss(B, A)
+
+
     network = nolearn.lasagne.NeuralNet(
         layers=net['prob'],
-        max_epochs=256,
+        max_epochs=128,
         update=lasagne.updates.nesterov_momentum,
         update_learning_rate=0.002,
         verbose=1,
         train_split=MyTrainSplit(None),
-        batch_iterator_train=MyBatch(batch_size=64)
+        batch_iterator_train=MyBatch(batch_size=64),
+        custom_epoch_scores=[('wav_acc', per_wav_accuracy), ('wav_ls', per_wav_loss)]
     )
 
     network.initialize()

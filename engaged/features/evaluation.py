@@ -36,30 +36,8 @@ def plot_roc_curve(gt, pred, label="", plot_midpoint=True):
     """
     Plots a single roc curve with a dot
     """
-
-    # evaluating and finding the curve midpoint
-    fpr, tpr, thresh = metrics.roc_curve(gt, pred.ravel())
-    roc_auc = metrics.auc(fpr, tpr)
-
-    # plotting curve
-    plt.plot(fpr, tpr , label='%s (area = %0.2f)' % (label, roc_auc))
-
-    if plot_midpoint:
-        mid_idx = np.argmin(np.abs(thresh-0.5))
-        plt.plot(fpr[mid_idx], tpr[mid_idx], 'bo')
-
-    # labels and legends
-    plt.legend(loc='best')
-    plt.xlabel('FPR')
-    plt.ylabel('TPR')
+    raise Exception("Moved to ml_helpers/evaluation/plot_roc_curve")
 
 
-def normalised_accuracy(gt, pred, threshold=0.5):
-    accs = 0
-    unique_classes = np.unique(gt)
-
-    for target in unique_classes:
-        idxs = gt == target
-        accs += metrics.accuracy_score(gt[idxs], pred[idxs] > threshold)
-
-    return accs / len(unique_classes)
+def normalised_accuracy():
+    raise Exception("Moved to ml_helpers/evaluation/class_normalised_accuracy")
