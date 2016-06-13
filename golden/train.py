@@ -37,29 +37,33 @@ logging_dir = data_io.base + 'predictions/%s/' % RUN_TYPE
 train_helpers.force_make_dir(logging_dir)
 sys.stdout = ui.Logger(logging_dir + 'log.txt')
 
-HWW = 10
+# parameters... these could probably be hyperopted
+CLASSNAME = 'biotic'
+HWW = 5
 SPEC_HEIGHT = 330
-LEARN_LOG = 1
+LEARN_LOG = 0
 DO_AUGMENTATION = True
 DO_BATCH_NORM = True
 NUM_FILTERS = 32
 NUM_DENSE_UNITS = 64
-CLASSNAME = 'anthrop'
-WIGGLE_ROOM = 2
+CONV_FILTER_WIDTH = 4
+WIGGLE_ROOM = 5
+MAX_EPOCHS = 50
+LEARNING_RATE = 0.0005
 
 # loading data
 train_files, test_files = data_io.load_splits()
 train_data, test_data = data_io.load_data(train_files, test_files, SPEC_HEIGHT, LEARN_LOG, CLASSNAME)
 print len(test_data[0]), len(train_data[0])
 
-# creaging samplers and batch iterators
-train_sampler = SpecSampler(train_data[0], train_data[1], HWW, DO_AUGMENTATION, LEARN_LOG)
-test_sampler = SpecSampler(test_data[0], test_data[1], HWW, False, LEARN_LOG)
+# # creaging samplers and batch iterators
+train_sampler = SpecSampler(64, train_data[0], train_data[1], HWW, DO_AUGMENTATION, LEARN_LOG, randomise=True)
+test_sampler = SpecSampler(64, test_data[0], test_data[1], HWW, False, LEARN_LOG)
 
 class MyTrainSplit(nolearn.lasagne.TrainSplit):
     # custom data split
     def __call__(self, data, Yb, net):
-        return train_sampler, test_sampler, None, None
+        return None, None, None, None#train_sampler, test_sampler, None, None
 
 
 if not DO_BATCH_NORM:
@@ -85,7 +89,7 @@ if LEARN_LOG:
     net['input'] = ElemwiseSumLayer((net['input_logged'], net['med_logged']))
 
 net['conv1_1'] = batch_norm(
-    ConvLayer(net['input'], NUM_FILTERS, (SPEC_HEIGHT - WIGGLE_ROOM, 6), nonlinearity=vlr))
+    ConvLayer(net['input'], NUM_FILTERS, (SPEC_HEIGHT - WIGGLE_ROOM, CONV_FILTER_WIDTH), nonlinearity=vlr))
 net['pool1'] = PoolLayer(net['conv1_1'], pool_size=(2, 2), stride=(2, 2), mode='max')
 net['pool1'] = DropoutLayer(net['pool1'], p=0.5)
 net['conv1_2'] = batch_norm(ConvLayer(net['pool1'], NUM_FILTERS, (1, 3), nonlinearity=vlr))
@@ -105,13 +109,13 @@ save_weights = train_helpers.SaveWeights(logging_dir, 2, 20)
 
 net = nolearn.lasagne.NeuralNet(
     layers=net['prob'],
-    max_epochs=5,
+    max_epochs=MAX_EPOCHS,
     update=lasagne.updates.adam,
-    update_learning_rate=0.0005,
+    update_learning_rate=LEARNING_RATE,
 #     update_momentum=0.975,
     verbose=1,
-    batch_iterator_train=train_helpers.MyBatch(128),
-    batch_iterator_test=train_helpers.MyBatchTest(128),
+    batch_iterator_train=train_sampler,
+    batch_iterator_test=test_sampler,
     train_split=MyTrainSplit(None),
     custom_epoch_scores=[('fake', lambda x, y: 0.0)],
     on_epoch_finished=[save_weights, save_history],
