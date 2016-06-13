@@ -31,12 +31,14 @@ class Log1Plus(lasagne.layers.Layer):
 
 class SpecSampler(object):
 
-    def __init__(self, batch_size, hww, do_aug, learn_log, randomise=False, seed=None):
+    def __init__(self, batch_size, hww, do_aug, learn_log, randomise=False,
+            seed=None, balanced=True):
         self.do_aug = do_aug
         self.learn_log = learn_log
         self.hww = hww
         self.seed = seed
         self.randomise = randomise
+        self.balanced = balanced
         self.batch_size = batch_size
 
     def __call__(self, X, y=None):
@@ -46,16 +48,20 @@ class SpecSampler(object):
         blank_label = np.zeros(2*self.hww) - 1
         if y is not None:
             labels = [yy > 0 for yy in y]
-            self.labels = np.hstack([blank_label] + labels + [blank_label])
+        else:
+            labels = [np.zeros(self.specs.shape[2] - 4*self.hww)]
+
+        self.labels = np.hstack([blank_label] + labels + [blank_label])
 
         which_spec = [ii * np.ones(xx.shape[1]) for ii, xx in enumerate(X)]
         self.which_spec = np.hstack([blank_label] + which_spec + [blank_label]).astype(np.int32)
 
         if self.learn_log:
-            self.medians = np.zeros((len(specs), specs[0].shape[0], self.hww*2))
-            for idx, spec in enumerate(specs):
+            self.medians = np.zeros((len(X), X[0].shape[0], self.hww*2))
+            for idx, spec in enumerate(X):
                 self.medians[idx] = np.median(spec, axis=1, keepdims=True)
 
+        assert self.labels.shape[0] == self.specs.shape[2]
         return self
 
     def __iter__(self): ##, num_per_class, seed=None
@@ -66,11 +72,10 @@ class SpecSampler(object):
         if self.seed is not None:
             np.random.seed(self.seed)
 
-        # now, loop over all the positives as batches
         idxs = np.where(self.labels >= 0)[0]
-        for sampled_locs, y in mbg.minibatch_iterator(
-                idxs, self.labels[idxs], self.batch_size,
-                randomise=self.randomise, balanced=True, class_size='smallest'):
+        for sampled_locs, y in mbg.minibatch_iterator(idxs, self.labels[idxs],
+            self.batch_size, randomise=self.randomise, balanced=self.balanced,
+                class_size='smallest'):
 
             # extract the specs
             bs = y.shape[0]  # avoid using self.batch_size as last batch may be smaller
@@ -81,7 +86,10 @@ class SpecSampler(object):
             count = 0
 
             for loc in sampled_locs:
-                X[count] = self.specs[:, :, (loc-self.hww):(loc+self.hww)]
+                try:
+                    X[count] = self.specs[:, :, (loc-self.hww):(loc+self.hww)]
+                except:
+                    import pdb; pdb.set_trace()
                 y[count] = self.labels[loc]
                 if self.learn_log:
                     which = self.which_spec[loc]
@@ -164,3 +172,29 @@ class SaveWeights(HelpersBaseClass):
             filenum = (len(history) - 1) / self.new_file_every
             savepath = self.savedir + "weights_%06d.pkl" % filenum
             net.save_params_to(savepath)
+
+
+class EarlyStopping(object):
+    # https://github.com/dnouri/nolearn/issues/18
+    def __init__(self, patience=100):
+        self.patience = patience
+        self.best_valid = np.inf
+        self.best_valid_epoch = 0
+        self.best_weights = None
+
+    def __call__(self, nn, train_history):
+        current_valid = train_history[-1]['valid_loss']
+        current_epoch = train_history[-1]['epoch']
+        if current_valid < self.best_valid:
+            self.best_valid = current_valid
+            self.best_valid_epoch = current_epoch
+            self.best_weights = nn.get_all_params_values()  # updated
+        elif self.best_valid_epoch + self.patience < current_epoch:
+            if nn.verbose:
+                print("Early stopping.")
+                print("Best valid loss was {:.6f} at epoch {}.".format(
+                    self.best_valid, self.best_valid_epoch))
+            nn.load_params_from(self.best_weights)
+            if nn.verbose:
+                print("Weights set.")
+            raise StopIteration()

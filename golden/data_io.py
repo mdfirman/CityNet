@@ -10,10 +10,19 @@ spec_pkl_dir = base + 'extracted/specs/'
 log_dir = base + 'ml_runs/'
 
 
-def load_splits():
+def load_splits(test_fold):
     splits = yaml.load(open(base + 'splits/folds.yaml'))
-    train_files = splits[0] + splits[1]
-    test_files = splits[2]
+
+    if test_fold == 0:
+        train_files = splits[1] + splits[2]
+        test_files = splits[0]
+    elif test_fold == 1:
+        train_files = splits[0] + splits[2]
+        test_files = splits[1]
+    elif test_fold == 2:
+        train_files = splits[0] + splits[1]
+        test_files = splits[2]
+
     return train_files, test_files
 
 
