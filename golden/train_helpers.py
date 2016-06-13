@@ -31,30 +31,31 @@ class Log1Plus(lasagne.layers.Layer):
 
 class SpecSampler(object):
 
-    def __init__(self, batch_size, specs, labels, hww, do_aug, learn_log, randomise=False, seed=None):
+    def __init__(self, batch_size, hww, do_aug, learn_log, randomise=False, seed=None):
         self.do_aug = do_aug
         self.learn_log = learn_log
         self.hww = hww
         self.seed = seed
-        self.randomise=randomise
+        self.randomise = randomise
         self.batch_size = batch_size
 
-        blank_spec = np.zeros((specs[0].shape[0], hww))
-        self.specs = np.hstack([blank_spec] + specs + [blank_spec])[None, ...]
+    def __call__(self, X, y=None):
+        blank_spec = np.zeros((X[0].shape[0], 2*self.hww))
+        self.specs = np.hstack([blank_spec] + X + [blank_spec])[None, ...]
 
-        labels = [xx > 0 for xx in labels]
-        blank_label = np.zeros(hww) - 1
-        self.labels = np.hstack([blank_label] + labels + [blank_label])
+        blank_label = np.zeros(2*self.hww) - 1
+        if y is not None:
+            labels = [yy > 0 for yy in y]
+            self.labels = np.hstack([blank_label] + labels + [blank_label])
 
-        which_spec = [ii * np.ones_like(lab) for ii, lab in enumerate(labels)]
+        which_spec = [ii * np.ones(xx.shape[1]) for ii, xx in enumerate(X)]
         self.which_spec = np.hstack([blank_label] + which_spec + [blank_label]).astype(np.int32)
 
-        if learn_log:
-            self.medians = np.zeros((len(specs), specs[0].shape[0], hww*2))
+        if self.learn_log:
+            self.medians = np.zeros((len(specs), specs[0].shape[0], self.hww*2))
             for idx, spec in enumerate(specs):
                 self.medians[idx] = np.median(spec, axis=1, keepdims=True)
 
-    def __call__(self, X, y=None):
         return self
 
     def __iter__(self): ##, num_per_class, seed=None
@@ -70,7 +71,6 @@ class SpecSampler(object):
         for sampled_locs, y in mbg.minibatch_iterator(
                 idxs, self.labels[idxs], self.batch_size,
                 randomise=self.randomise, balanced=True, class_size='smallest'):
-            # print y.mean(), self.labels[idxs].shape, self.labels[idxs].sum(), np.unique(self.labels[idxs])
 
             # extract the specs
             bs = y.shape[0]  # avoid using self.batch_size as last batch may be smaller

@@ -39,8 +39,9 @@ sys.stdout = ui.Logger(logging_dir + 'log.txt')
 
 # parameters... these could probably be hyperopted
 CLASSNAME = 'biotic'
-HWW = 5
+SPEC_TYPE = '330'
 SPEC_HEIGHT = 330
+HWW = 5
 LEARN_LOG = 0
 DO_AUGMENTATION = True
 DO_BATCH_NORM = True
@@ -53,19 +54,18 @@ LEARNING_RATE = 0.0005
 
 # loading data
 train_files, test_files = data_io.load_splits()
-train_data, test_data = data_io.load_data(train_files, test_files, SPEC_HEIGHT, LEARN_LOG, CLASSNAME)
+train_data, test_data = data_io.load_data(
+    train_files, test_files, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, CLASSNAME)
 print len(test_data[0]), len(train_data[0])
 
 # # creaging samplers and batch iterators
-train_sampler = SpecSampler(64, train_data[0], train_data[1], HWW,
-        DO_AUGMENTATION, LEARN_LOG, randomise=True)
-test_sampler = SpecSampler(64, test_data[0], test_data[1], HWW,
-        False, LEARN_LOG, seed=10)
+train_sampler = SpecSampler(64, HWW, DO_AUGMENTATION, LEARN_LOG, randomise=True)
+test_sampler = SpecSampler(64, HWW, False, LEARN_LOG, seed=10)
 
 class MyTrainSplit(nolearn.lasagne.TrainSplit):
     # custom data split
-    def __call__(self, data, Yb, net):
-        return None, None, None, None#train_sampler, test_sampler, None, None
+    def __call__(self, Xb, Yb, net):
+        return train_data[0], test_data[0], train_data[1], test_data[1]
 
 
 if not DO_BATCH_NORM:
@@ -129,7 +129,7 @@ results_savedir = train_helpers.force_make_dir(logging_dir + 'results/')
 
 # now test the algorithm and save:
 y_true = np.hstack([yy for _, yy in test_sampler])
-y_pred_prob = net.predict_proba(None)
+y_pred_prob = net.predict_proba(test_data[0])
 y_pred = np.argmax(y_pred_prob, axis=1)
 print y_true.shape, y_pred_prob.shape, y_pred.shape
 

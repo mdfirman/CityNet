@@ -17,15 +17,15 @@ def load_splits():
     return train_files, test_files
 
 
-def load_data(train_files, test_files, SPEC_HEIGHT, LEARN_LOG, CLASSNAME):
+def load_data(train_files, test_files, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, CLASSNAME):
     # load data and make list of specsamplers
     train_data = [[], []]
     test_data = [[], []]
 
-    for fname in os.listdir(spec_pkl_dir):
+    for fname in os.listdir(spec_pkl_dir + SPEC_TYPE + '/'):
         # load spectrogram and annotations
         # spec = pickle.load(open(spec_pkl_dir + fname))[:SPEC_HEIGHT, :]
-        spec = pickle.load(open(spec_pkl_dir + fname))[-SPEC_HEIGHT:, :]
+        spec = pickle.load(open(spec_pkl_dir + SPEC_TYPE + '/' + fname))[-SPEC_HEIGHT:, :]
         annots, wav, sample_rate = pickle.load(open(annotation_pkl_dir + fname))
 
         # reshape annotations
