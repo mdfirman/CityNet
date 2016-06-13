@@ -66,7 +66,7 @@ class SpecSampler(object):
 
     def __iter__(self): ##, num_per_class, seed=None
         #num_samples = num_per_class * 2
-        channels = self.specs.shape[0]
+        channels = self.specs.shape[0] + 1
         height = self.specs.shape[1]
 
         if self.seed is not None:
@@ -86,10 +86,10 @@ class SpecSampler(object):
             count = 0
 
             for loc in sampled_locs:
-                try:
-                    X[count] = self.specs[:, :, (loc-self.hww):(loc+self.hww)]
-                except:
-                    import pdb; pdb.set_trace()
+                X[count] = self.specs[:, :, (loc-self.hww):(loc+self.hww)]
+                X[count, 1] = (X[count, 0] - X[count, 0].mean()) / X[count, 0].std()
+                # X[count] -= X[count].mean()
+                # X[count] /= X[count].std()
                 y[count] = self.labels[loc]
                 if self.learn_log:
                     which = self.which_spec[loc]
@@ -178,14 +178,14 @@ class EarlyStopping(object):
     # https://github.com/dnouri/nolearn/issues/18
     def __init__(self, patience=100):
         self.patience = patience
-        self.best_valid = np.inf
+        self.best_valid = 0#np.inf
         self.best_valid_epoch = 0
         self.best_weights = None
 
     def __call__(self, nn, train_history):
-        current_valid = train_history[-1]['valid_loss']
+        current_valid = train_history[-1]['valid_accuracy']
         current_epoch = train_history[-1]['epoch']
-        if current_valid < self.best_valid:
+        if current_valid > self.best_valid:
             self.best_valid = current_valid
             self.best_valid_epoch = current_epoch
             self.best_weights = nn.get_all_params_values()  # updated

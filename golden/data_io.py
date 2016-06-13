@@ -26,34 +26,32 @@ def load_splits(test_fold):
     return train_files, test_files
 
 
-def load_data(train_files, test_files, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, CLASSNAME):
+def load_data_helper(fname, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG):
+    # load spectrogram and annotations
+    spec = pickle.load(open(spec_pkl_dir + SPEC_TYPE + '/' + fname))[-SPEC_HEIGHT:, :]
+    annots, wav, sample_rate = pickle.load(open(annotation_pkl_dir + fname))
+
+    # reshape annotations
+    for classname in annots:
+        factor = float(spec.shape[1]) / annots[classname].shape[0]
+        annots[classname] = zoom(annots[classname], factor)
+
+    # create sampler
+    if not LEARN_LOG:
+        spec = np.log(0.001 + 10*spec)
+        spec = spec - np.median(spec, axis=1, keepdims=True)
+
+    return spec, annots
+
+
+def load_data(fnames, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, CLASSNAME):
     # load data and make list of specsamplers
-    train_data = [[], []]
-    test_data = [[], []]
+    X = []
+    y = []
 
-    for fname in os.listdir(spec_pkl_dir + SPEC_TYPE + '/'):
-        # load spectrogram and annotations
-        # spec = pickle.load(open(spec_pkl_dir + fname))[:SPEC_HEIGHT, :]
-        spec = pickle.load(open(spec_pkl_dir + SPEC_TYPE + '/' + fname))[-SPEC_HEIGHT:, :]
-        annots, wav, sample_rate = pickle.load(open(annotation_pkl_dir + fname))
+    for fname in fnames:
+        spec, annots = load_data_helper(fname, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG)
+        X.append(spec)
+        y.append(annots[CLASSNAME])
 
-        # reshape annotations
-        for classname in annots:
-            factor = float(spec.shape[1]) / annots[classname].shape[0]
-            annots[classname] = zoom(annots[classname], factor)
-
-        # create sampler
-        if not LEARN_LOG:
-            spec = np.log(0.001 + spec)
-            spec = spec - np.median(spec, axis=1, keepdims=True)
-
-        if fname in train_files:
-            train_data[0].append(spec)
-            train_data[1].append(annots[CLASSNAME])
-        elif fname in test_files:
-            test_data[0].append(spec)
-            test_data[1].append(annots[CLASSNAME])
-        else:
-            print "WARNING - file %s not in train or test" % fname
-
-    return train_data, test_data
+    return X, y
