@@ -44,11 +44,11 @@ SPEC_HEIGHT = 330
 LEARN_LOG = 0
 DO_AUGMENTATION = True
 DO_BATCH_NORM = True
-NUM_FILTERS = 32
+NUM_FILTERS = 128
 NUM_DENSE_UNITS = 64
 CONV_FILTER_WIDTH = 4
 WIGGLE_ROOM = 5
-MAX_EPOCHS = 50
+MAX_EPOCHS = 1
 LEARNING_RATE = 0.0005
 
 # loading data
@@ -57,8 +57,10 @@ train_data, test_data = data_io.load_data(train_files, test_files, SPEC_HEIGHT, 
 print len(test_data[0]), len(train_data[0])
 
 # # creaging samplers and batch iterators
-train_sampler = SpecSampler(64, train_data[0], train_data[1], HWW, DO_AUGMENTATION, LEARN_LOG, randomise=True)
-test_sampler = SpecSampler(64, test_data[0], test_data[1], HWW, False, LEARN_LOG)
+train_sampler = SpecSampler(64, train_data[0], train_data[1], HWW,
+        DO_AUGMENTATION, LEARN_LOG, randomise=True)
+test_sampler = SpecSampler(64, test_data[0], test_data[1], HWW,
+        False, LEARN_LOG, seed=10)
 
 class MyTrainSplit(nolearn.lasagne.TrainSplit):
     # custom data split
@@ -126,10 +128,10 @@ net.fit(None, None)
 results_savedir = train_helpers.force_make_dir(logging_dir + 'results/')
 
 # now test the algorithm and save:
-num_to_sample = np.sum(test_sampler.labels == 1)
-X, y_true = test_sampler.sample(num_to_sample)
-y_pred_prob = net.predict_proba(X)
+y_true = np.hstack([yy for _, yy in test_sampler])
+y_pred_prob = net.predict_proba(None)
 y_pred = np.argmax(y_pred_prob, axis=1)
+print y_true.shape, y_pred_prob.shape, y_pred.shape
 
 # confusion matrix
 plt.figure(figsize=(5, 5))

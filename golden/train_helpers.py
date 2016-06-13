@@ -31,10 +31,11 @@ class Log1Plus(lasagne.layers.Layer):
 
 class SpecSampler(object):
 
-    def __init__(self, batch_size, specs, labels, hww, do_aug, learn_log, randomise=False):
+    def __init__(self, batch_size, specs, labels, hww, do_aug, learn_log, randomise=False, seed=None):
         self.do_aug = do_aug
         self.learn_log = learn_log
         self.hww = hww
+        self.seed = seed
         self.randomise=randomise
         self.batch_size = batch_size
 
@@ -61,14 +62,14 @@ class SpecSampler(object):
         channels = self.specs.shape[0]
         height = self.specs.shape[1]
 
-        # if seed is not None:
-        #     np.random.seed(seed)
+        if self.seed is not None:
+            np.random.seed(self.seed)
 
         # now, loop over all the positives as batches
         idxs = np.where(self.labels >= 0)[0]
         for sampled_locs, y in mbg.minibatch_iterator(
                 idxs, self.labels[idxs], self.batch_size,
-                randomise=self.randomise, balanced=True, balance_using='smallest'):
+                randomise=self.randomise, balanced=True, class_size='smallest'):
             # print y.mean(), self.labels[idxs].shape, self.labels[idxs].sum(), np.unique(self.labels[idxs])
 
             # extract the specs
