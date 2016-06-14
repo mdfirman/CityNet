@@ -36,20 +36,24 @@ logging_dir = data_io.base + 'predictions/%s/' % RUN_TYPE
 train_helpers.force_make_dir(logging_dir)
 sys.stdout = ui.Logger(logging_dir + 'log.txt')
 
-# data options
+# loadingdata options
 TRAINING_DATA = 'golden'
 TEST_FOLD = 1
 CLASSNAME = 'biotic'
 SPEC_TYPE = 'mel'
 SPEC_HEIGHT = 32
 
-# network parameters... these could probably be hyperopted
+# data preprocessing options
+A = 0.001
+B = 10.0
+HWW = 5
 LEARN_LOG = 0
 DO_AUGMENTATION = 1
+
+# network parameters
 DO_BATCH_NORM = 1
-HWW = 5
 NUM_FILTERS = 32
-NUM_DENSE_UNITS = 64
+NUM_DENSE_UNITS = 128
 CONV_FILTER_WIDTH = 4
 WIGGLE_ROOM = 5
 
@@ -61,9 +65,9 @@ if TRAINING_DATA == 'golden':
     train_files, test_files = data_io.load_splits(TEST_FOLD)
 else:
     raise Exception("Not implemented!")
-    
-train_X, train_y = data_io.load_data(train_files, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, CLASSNAME)
-test_X, test_y = data_io.load_data(test_files, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, CLASSNAME)
+
+train_X, train_y = data_io.load_data(train_files, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, CLASSNAME, A, B)
+test_X, test_y = data_io.load_data(test_files, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, CLASSNAME, A, B)
 
 # # creaging samplers and batch iterators
 train_sampler = SpecSampler(64, HWW, DO_AUGMENTATION, LEARN_LOG, randomise=True)
@@ -82,7 +86,7 @@ if not DO_BATCH_NORM:
 
 # main input layer, then logged
 net = {}
-net['input'] = InputLayer((None, 2, SPEC_HEIGHT, HWW*2), name='input')
+net['input'] = InputLayer((None, 3, SPEC_HEIGHT, HWW*2), name='input')
 
 if LEARN_LOG:
     off = lasagne.init.Constant(0.01)

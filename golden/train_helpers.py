@@ -66,7 +66,7 @@ class SpecSampler(object):
 
     def __iter__(self): ##, num_per_class, seed=None
         #num_samples = num_per_class * 2
-        channels = self.specs.shape[0] + 1
+        channels = self.specs.shape[0] + 2
         height = self.specs.shape[1]
 
         if self.seed is not None:
@@ -88,6 +88,7 @@ class SpecSampler(object):
             for loc in sampled_locs:
                 X[count] = self.specs[:, :, (loc-self.hww):(loc+self.hww)]
                 X[count, 1] = (X[count, 0] - X[count, 0].mean()) / X[count, 0].std()
+                X[count, 2] = X[count, 0] / X[count, 0].max()
                 # X[count] -= X[count].mean()
                 # X[count] /= X[count].std()
                 y[count] = self.labels[loc]
