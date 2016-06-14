@@ -8,6 +8,17 @@ import nolearn.lasagne
 from ml_helpers import minibatch_generators as mbg
 import matplotlib.pyplot as plt
 
+from lasagne.layers import InputLayer, DimshuffleLayer
+from lasagne.layers import DenseLayer
+from lasagne.layers import NonlinearityLayer
+from lasagne.layers import DropoutLayer
+from lasagne.layers import Pool2DLayer as PoolLayer
+from lasagne.layers.dnn import Conv2DDNNLayer as ConvLayer
+from lasagne.nonlinearities import softmax, very_leaky_rectify as vlr
+import theano
+from lasagne.layers import batch_norm, ElemwiseSumLayer, ExpressionLayer, DimshuffleLayer
+import lasagne.layers
+
 
 def force_make_dir(dirpath):
     if not os.path.exists(dirpath):
@@ -56,17 +67,16 @@ class SpecSampler(object):
         which_spec = [ii * np.ones(xx.shape[1]) for ii, xx in enumerate(X)]
         self.which_spec = np.hstack([blank_label] + which_spec + [blank_label]).astype(np.int32)
 
-        if self.learn_log:
-            self.medians = np.zeros((len(X), X[0].shape[0], self.hww*2))
-            for idx, spec in enumerate(X):
-                self.medians[idx] = np.median(spec, axis=1, keepdims=True)
+        self.medians = np.zeros((len(X), X[0].shape[0], self.hww*2))
+        for idx, spec in enumerate(X):
+            self.medians[idx] = np.median(spec, axis=1, keepdims=True)
 
         assert self.labels.shape[0] == self.specs.shape[2]
         return self
 
     def __iter__(self): ##, num_per_class, seed=None
         #num_samples = num_per_class * 2
-        channels = self.specs.shape[0] + 2
+        channels = self.specs.shape[0] + 3
         height = self.specs.shape[1]
 
         if self.seed is not None:
@@ -86,15 +96,23 @@ class SpecSampler(object):
             count = 0
 
             for loc in sampled_locs:
+                which = self.which_spec[loc]
+
                 X[count] = self.specs[:, :, (loc-self.hww):(loc+self.hww)]
-                X[count, 1] = (X[count, 0] - X[count, 0].mean()) / X[count, 0].std()
-                X[count, 2] = X[count, 0] / X[count, 0].max()
-                # X[count] -= X[count].mean()
-                # X[count] /= X[count].std()
+
+                if not self.learn_log:
+                    X[count, 1] = X[count, 0] - self.medians[which]
+                    # X[count, 0] = (X[count, 0] - X[count, 0].mean()) / X[count, 0].std()
+                    X[count, 0] = (X[count, 1] - X[count, 1].mean(0, keepdims=True)) / (X[count, 1].std(0, keepdims=True) + 0.001)
+
+                X[count, 2] = (X[count, 1] - X[count, 1].mean()) / X[count, 1].std()
+                X[count, 3] = X[count, 1] / X[count, 1].max()
+
                 y[count] = self.labels[loc]
                 if self.learn_log:
                     which = self.which_spec[loc]
                     X_medians[count] = self.medians[which]
+
                 count += 1
 
             # doing augmentation
@@ -199,3 +217,48 @@ class EarlyStopping(object):
             if nn.verbose:
                 print("Weights set.")
             raise StopIteration()
+
+
+def create_net(SPEC_HEIGHT, HWW, LEARN_LOG, NUM_FILTERS,
+    WIGGLE_ROOM, CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM):
+
+    if not DO_BATCH_NORM:
+        batch_norm = lambda x: x
+    else:
+        from lasagne.layers import batch_norm
+
+    # main input layer, then logged
+    net = {}
+    net['input'] = InputLayer((None, 4, SPEC_HEIGHT, HWW*2), name='input')
+
+    if LEARN_LOG:
+        off = lasagne.init.Constant(0.01)
+        mult = lasagne.init.Constant(1.0)
+
+        net['input_logged'] = Log1Plus(net['input'], off, mult)
+
+        # logging the median and multiplying by -1
+        net['input_med'] = InputLayer((None, 1, SPEC_HEIGHT, HWW*2), name='input_med')
+        net['med_logged'] = Log1Plus(
+            net['input_med'], off=net['input_logged'].off, mult=net['input_logged'].mult)
+        net['med_logged'] = ExpressionLayer(net['med_logged'], lambda X: -X)
+
+        # summing the logged input with the negative logged median
+        net['input'] = ElemwiseSumLayer((net['input_logged'], net['med_logged']))
+
+    net['conv1_1'] = batch_norm(
+        ConvLayer(net['input'], NUM_FILTERS, (SPEC_HEIGHT - WIGGLE_ROOM, CONV_FILTER_WIDTH), nonlinearity=vlr))
+    net['pool1'] = PoolLayer(net['conv1_1'], pool_size=(2, 2), stride=(2, 2), mode='max')
+    net['pool1'] = DropoutLayer(net['pool1'], p=0.5)
+    net['conv1_2'] = batch_norm(ConvLayer(net['pool1'], NUM_FILTERS, (1, 3), nonlinearity=vlr))
+    # net['pool2'] = PoolLayer(net['conv1_2'], pool_size=(1, 2), stride=(1, 1))
+    net['pool2'] = DropoutLayer(net['conv1_2'], p=0.5)
+
+    net['fc6'] = batch_norm(DenseLayer(net['pool2'], num_units=NUM_DENSE_UNITS, nonlinearity=vlr))
+    net['fc6'] = DropoutLayer(net['fc6'], p=0.5)
+    net['fc7'] = batch_norm(DenseLayer(net['fc6'], num_units=NUM_DENSE_UNITS, nonlinearity=vlr))
+    net['fc7'] = DropoutLayer(net['fc7'], p=0.5)
+    net['fc8'] = DenseLayer(net['fc7'], num_units=2, nonlinearity=None)
+    net['prob'] = NonlinearityLayer(net['fc8'], softmax)
+
+    return net
