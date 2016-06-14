@@ -27,7 +27,6 @@ def run(global_dir, network_input_size, num_classes, data,
     Perform a single training run, given a list of parameters as might
     be provided by e.g. hyperopt
     """
-
     # must create the augment_options from the params (a limitation of a flat parameters dictionary)
     augment_options = {}
     for augment_type in ['flip', 'roll', 'vol_ramp']:
@@ -37,10 +36,11 @@ def run(global_dir, network_input_size, num_classes, data,
     slice_width = network_input_size[1]
     val_X, val_y = helpers.form_slices_validation_set(
                 data, slice_width, params['do_median_normalise'], 'val_')
+    num_channels = val_X[0].shape[2]
 
     # setting up the network
     network, train_fn, predict_fn, val_fn, input_var, target_var, loss = \
-        helpers.prepare_network(network_input_size, num_classes, params)
+        helpers.prepare_network(network_input_size, num_channels, num_classes, params)
 
     best_validation_loss = 10000
     best_model = None
@@ -110,7 +110,6 @@ def run(global_dir, network_input_size, num_classes, data,
         for batch in helpers.iterate_minibatches(val_X, val_y, 8, slice_width):
 
             inputs, targets = batch
-
             err, acc = val_fn(inputs, targets)
             batch_val_loss += err
             val_acc += acc
@@ -177,7 +176,7 @@ def run(global_dir, network_input_size, num_classes, data,
         # I'm doing this more for speed than overfitting.
         # I think I'll say that if the best result wasn't in the most recent
         # 50% of epochs, then quit.
-        if epoch > 50:
+        if epoch > 75:
             all_val_losses = [result['val_loss'] for result in run_results]
             the_best_epoch = np.argmin(np.array(all_val_losses))
             if the_best_epoch < epoch / 2:

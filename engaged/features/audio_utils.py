@@ -56,6 +56,10 @@ def normalise(slice_in, strategy, params=None):
         normalised_power_spec = power_spec / power_spec.sum()
         return np.log(normalised_power_spec * desired_sum)
 
+    elif strategy == 'power_and_local_normalisation':
+        slice_normed = normalise(slice_in, 'equal_power')
+        return local_normalise(slice_normed, params[0], params[1])
+
     elif strategy == 'local_normalisation':
         # this is the hardest one...
         return local_normalise(slice_in, params[0], params[1])

@@ -35,26 +35,15 @@ class MyTrainSplit(nolearn.lasagne.TrainSplit):
 
 
 def augment(X):
-    newX = np.zeros_like(X)
     for idx in xrange(X.shape[0]):
         mult = (1.0 + np.random.randn() * 0.1)
-        add = np.random.randn() * 1.0
-
-        newX[idx] = X[idx] * mult
-        newX[idx] += add
-
-        if np.random.rand() > 0.0:
-            exp = np.random.randn() * 0.25 + 1.0
-            if exp < 0:
-                break
-            newX[idx] = X[idx]**exp
-
-        if np.random.rand() > 0.9:
+        add = np.random.randn() * 0.2
+        X[idx] *= mult
+        X[idx] += add
+        if np.random.rand() > 0.95:
             shift = np.random.randint(0, 224)
-            newX[idx, 0] = np.roll(newX[idx, 0], shift, 1)
-
-    newX[newX<-0.1] = 0.1
-    return newX
+            X[idx, 0] = np.roll(X[idx, 0], shift, 1)
+    return X
 
 
 class MyBatch(nolearn.lasagne.BatchIterator):

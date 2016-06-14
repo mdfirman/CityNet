@@ -19,7 +19,7 @@ from lasagne.layers import NonlinearityLayer
 from lasagne.layers import DropoutLayer
 from lasagne.layers import Pool2DLayer as PoolLayer
 from lasagne.layers.dnn import Conv2DDNNLayer as ConvLayer
-from lasagne.nonlinearities import softmax, elu as vlr
+from lasagne.nonlinearities import softmax, very_leaky_rectify as vlr
 import theano
 from lasagne.layers import batch_norm, ElemwiseSumLayer, ExpressionLayer, DimshuffleLayer
 import theano.tensor as T
@@ -31,39 +31,56 @@ from ml_helpers import ui
 from ml_helpers.evaluation import plot_confusion_matrix
 
 RUN_TYPE = 'standard_spec'
-fold = 0
 
 logging_dir = data_io.base + 'predictions/%s/' % RUN_TYPE
 train_helpers.force_make_dir(logging_dir)
 sys.stdout = ui.Logger(logging_dir + 'log.txt')
 
-# parameters... these could probably be hyperopted
-CLASSNAME = 'anthrop'#biotic
-HWW = 10
-SPEC_HEIGHT = 330
+
+# loadingdata options
+TRAINING_DATA = 'golden'
+TEST_FOLD = 1
+CLASSNAME = 'biotic'
+SPEC_TYPE = 'mel'
+SPEC_HEIGHT = 32
+
+# data preprocessing options
+A = 0.001
+B = 10.0
+HWW = 5
 LEARN_LOG = 0
-DO_AUGMENTATION = True
-DO_BATCH_NORM = True
+DO_AUGMENTATION = 1
+
+# network parameters
+DO_BATCH_NORM = 1
 NUM_FILTERS = 32
-NUM_DENSE_UNITS = 64
+NUM_DENSE_UNITS = 128
 CONV_FILTER_WIDTH = 4
 WIGGLE_ROOM = 5
 MAX_EPOCHS = 50
 LEARNING_RATE = 0.001
+MAX_EPOCHS = 150
+LEARNING_RATE = 0.0005
 
 # loading data
-train_files, test_files = data_io.load_splits()
-train_data, test_data = data_io.load_data(train_files, test_files, SPEC_HEIGHT, LEARN_LOG, CLASSNAME)
-print len(test_data[0]), len(train_data[0])
+if TRAINING_DATA == 'golden':
+    train_files, test_files = data_io.load_splits(TEST_FOLD)
+else:
+    raise Exception("Not implemented!")
+
+train_X, train_y = data_io.load_data(train_files, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, CLASSNAME, A, B)
+test_X, test_y = data_io.load_data(test_files, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, CLASSNAME, A, B)
 
 # # creaging samplers and batch iterators
-train_sampler = SpecSampler(64, train_data[0], train_data[1], HWW, DO_AUGMENTATION, LEARN_LOG, randomise=True)
-test_sampler = SpecSampler(64, test_data[0], test_data[1], HWW, False, LEARN_LOG)
+train_sampler = SpecSampler(64, HWW, DO_AUGMENTATION, LEARN_LOG, randomise=True)
+test_sampler = SpecSampler(64, HWW, False, LEARN_LOG, randomise=True, seed=10)
+
 
 class MyTrainSplit(nolearn.lasagne.TrainSplit):
     # custom data split
-    def __call__(self, data, Yb, net):
-        return None, None, None, None#train_sampler, test_sampler, None, None
+    def __call__(self, Xb, Yb, net):
+        return train_X, test_X, train_y, test_y
+        # return train_data[0], test_data[0], train_data[1], test_data[1]
 
 
 if not DO_BATCH_NORM:
@@ -71,7 +88,7 @@ if not DO_BATCH_NORM:
 
 # main input layer, then logged
 net = {}
-net['input'] = InputLayer((None, 1, SPEC_HEIGHT, HWW*2), name='input')
+net['input'] = InputLayer((None, 3, SPEC_HEIGHT, HWW*2), name='input')
 
 if LEARN_LOG:
     off = lasagne.init.Constant(0.01)
@@ -104,8 +121,8 @@ net['fc8'] = DenseLayer(net['fc7'], num_units=2, nonlinearity=None)
 net['prob'] = NonlinearityLayer(net['fc8'], softmax)
 
 save_history = train_helpers.SaveHistory(logging_dir)
-# save_predictions = train_helpers.SavePredictions(logging_dir)
 save_weights = train_helpers.SaveWeights(logging_dir, 2, 20)
+early_stopping = train_helpers.EarlyStopping(10)
 
 net = nolearn.lasagne.NeuralNet(
     layers=net['prob'],
@@ -118,32 +135,56 @@ net = nolearn.lasagne.NeuralNet(
     batch_iterator_test=test_sampler,
     train_split=MyTrainSplit(None),
     custom_epoch_scores=[('fake', lambda x, y: 0.0)],
-    on_epoch_finished=[save_weights, save_history],
+    on_epoch_finished=[save_weights, save_history, early_stopping],
     check_input=False
 )
 net.fit(None, None)
 
 results_savedir = train_helpers.force_make_dir(logging_dir + 'results/')
+predictions_savedir = train_helpers.force_make_dir(
+    logging_dir + 'per_file_predictions/')
 
 # now test the algorithm and save:
-num_to_sample = np.sum(test_sampler.labels == 1)
-X, y_true = test_sampler.sample(num_to_sample)
-y_pred_prob = net.predict_proba(X)
+probas = []
+y_true = []
+for Xb, yb in test_sampler(test_X, test_y):
+    probas.append(net.apply_batch_func(net.predict_iter_, Xb))
+    y_true.append(yb)
+y_pred_prob = np.vstack(probas)
+y_true = np.hstack(y_true)
 y_pred = np.argmax(y_pred_prob, axis=1)
 
 # confusion matrix
 plt.figure(figsize=(5, 5))
 plot_confusion_matrix(y_true, y_pred, normalise=True, cls_labels=['None', CLASSNAME])
-plt.savefig(results_savedir + 'conf_mat_%d.png' % fold)
+plt.savefig(results_savedir + 'conf_mat_%d.png' % TEST_FOLD)
 plt.close()
 
 # final predictions
 # todo - actually save one per file? (no, let's do this balanced...)
-with open(results_savedir + "predictions_%d.pkl" % fold, 'w') as f:
+with open(results_savedir + "predictions_%d.pkl" % TEST_FOLD, 'w') as f:
     pickle.dump([y_true, y_pred_prob], f, -1)
 
+# now final predictions per file...
+test_sampler = SpecSampler(64, HWW, False, LEARN_LOG, randomise=False,
+    seed=10, balanced=False)
+
+for fname, spec, y in zip(test_files, test_X, test_y):
+    probas = []
+    y_true = []
+    for Xb, yb in test_sampler([spec], [y]):
+        probas.append(net.apply_batch_func(net.predict_iter_, Xb))
+        y_true.append(yb)
+    y_pred_prob = np.vstack(probas)
+    y_true = np.hstack(y_true)
+    y_pred = np.argmax(y_pred_prob, axis=1)
+
+    with open(predictions_savedir + fname, 'w') as f:
+        pickle.dump([y_true, y_pred_prob], f, -1)
+
+
 # save weights from network
-net.save_params_to(results_savedir + "weights_%d.pkl" % fold)
+net.save_params_to(results_savedir + "weights_%d.pkl" % TEST_FOLD)
 
 # we could now do one per file... each spectrogram at a time... We could do the full plotting etc
 # probably not worth it.

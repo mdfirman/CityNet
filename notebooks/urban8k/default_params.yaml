@@ -1,23 +1,25 @@
-initial_learning_rate: 0.000305583
+initial_learning_rate: 0.000605583
 final_learning_rate_fraction: 0.138658
 epochs_of_initial: 35
 falloff: 0.0586
-input_dropout: 0.03909
+input_dropout: 0.02
+#3909
 initial_filter_layer: False
-filter_sizes: 3
-num_filters: 60
+filter_sizes: 5
+num_filters: 30
 num_filter_layers: 2
-pool_size_x: 3
+pool_size_x: 4
 pool_size_y: 4
-dense_dropout: 0.58768
+dense_dropout: 0.5
+#8768
 num_dense_layers: 3
-num_dense_units: 718
+num_dense_units: 800
 augment_flip: True
 augment_roll: True
 augment_vol_ramp: False
 do_median_normalise: False
-num_epochs: 120
+num_epochs: 256
 minibatch_size: 80
-normalisation: 'stowell_half'
+normalisation: ['stowell_half', 'equal_power', 'overall_median_rescale']
 norm_mean_std: 40
 norm_std_std: 15

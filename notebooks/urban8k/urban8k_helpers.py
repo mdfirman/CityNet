@@ -44,7 +44,8 @@ def simple_whiten(data, reform=False):
     return data
 
 
-def load_data(loadpath, normalisation=None, small_dataset=False, normalisation_params=None):
+def load_data(loadpath, normalisation=None, small_dataset=False,
+        normalisation_params=None, just_difficult_classes=False):
     '''
     Loading in all the data at once, and get into the correct format.
     '''
@@ -53,8 +54,18 @@ def load_data(loadpath, normalisation=None, small_dataset=False, normalisation_p
 
     num_classes = np.unique(data['train_y']).shape[0]
 
-    print "There are %d classes " % num_classes
-    print np.unique(data['train_y'])
+    if just_difficult_classes:
+        classes_to_use = [0, 4, 5, 7]
+        for data_type in ['train_', 'test_', 'val_']:
+            to_take = np.where(np.logical_or.reduce(
+                [data[data_type + 'y'] == cls for cls in classes_to_use]))[0]
+            data[data_type + 'X'] = [data[data_type + 'X'][xx] for xx in to_take]
+            data[data_type + 'y'] = data[data_type + 'y'][to_take]
+
+    # save the medians for each of the X values!
+    # for key in ['train_X', 'test_X', 'val_X']:
+    #     for idx in range(len(data[key])):
+    #         data[key][idx] =
 
     # if normalisation == 'pre_process_whiten':
     if normalisation == 'simple_whiten':
@@ -74,9 +85,6 @@ def load_data(loadpath, normalisation=None, small_dataset=False, normalisation_p
 
     for key, val in data.iteritems():
 
-        if not key.startswith('__'):
-            print key, len(val),
-
         # normalisation strategies
 
         if key.endswith('_X'):
@@ -84,9 +92,21 @@ def load_data(loadpath, normalisation=None, small_dataset=False, normalisation_p
             if normalisation is not None and \
                 normalisation is not 'simple_whiten' and \
                 normalisation is not 'full_whiten':
-                for idx in range(len(data[key])):
-                    data[key][idx] = audio_utils.normalise(
-                        data[key][idx], normalisation, normalisation_params)
+
+                if hasattr(normalisation, '__iter__'):
+                    # normalise each of the possible ways and stack...
+                    for idx in range(len(data[key])):
+                        temp = []
+                        for norm in normalisation:
+                            temp.append(audio_utils.normalise(
+                                data[key][idx], norm, normalisation_params))
+                        data[key][idx] = np.dstack(temp)
+
+
+                else:
+                    for idx in range(len(data[key])):
+                        data[key][idx] = audio_utils.normalise(
+                            data[key][idx], normalisation, normalisation_params)
 
         # ensuring correct types
         elif key.endswith('_y'):
@@ -103,10 +123,17 @@ def load_data(loadpath, normalisation=None, small_dataset=False, normalisation_p
             data[data_type + 'X'] = [data[data_type + 'X'][temp_idx] for temp_idx in to_use]
             data[data_type + 'y'] = data[data_type + 'y'][to_use]
 
+    for key, val in data.iteritems():
+        if not key.startswith('__'):
+            print key, len(val),
+
+    print "There are %d classes " % num_classes
+    print np.unique(data['train_y'])
+
     return data, num_classes
 
 
-def build_cnn(input_var, network_input_size, num_classes, params):
+def build_cnn(input_var, network_input_size, num_channels, num_classes, params):
     '''
     Function to programmatically build a CNN in lasagne.
     '''
@@ -120,10 +147,10 @@ def build_cnn(input_var, network_input_size, num_classes, params):
     for key, val in params.iteritems():
         print key.rjust(40), val
 
-    nonlin_choice = lasagne.nonlinearities.very_leaky_rectify
+    nonlin_choice = lasagne.nonlinearities.leaky_rectify
 
     # Input layer, followed by dropout
-    network_shape = (None, 1, network_input_size[0], network_input_size[1])
+    network_shape = (None, num_channels, network_input_size[0], network_input_size[1])
     print "Making network of input size ", network_shape
     network = layers.InputLayer(shape=network_shape, input_var=input_var)
     network = layers.dropout(network, p=params['input_dropout'])
@@ -169,13 +196,14 @@ def build_cnn(input_var, network_input_size, num_classes, params):
 
 
 # Prepare Theano variables for inputs and targets
-def prepare_network(network_input_size, num_classes, params):
+def prepare_network(network_input_size, num_channels, num_classes, params):
 
     input_var = T.tensor4('inputs')
     target_var = T.ivector('targets')
 
     # Create neural network model (depending on first command line parameter)
-    network = build_cnn(input_var, network_input_size, num_classes, params)
+    network = build_cnn(input_var, network_input_size, num_channels,
+        num_classes, params)
 
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
@@ -184,7 +212,7 @@ def prepare_network(network_input_size, num_classes, params):
     loss = loss.mean()
     # reg_l2 = lasagne.regularization.regularize_network_params(
         # network, lasagne.regularization.l2)
-    # loss = loss + 0.0001 * reg_l2
+    # loss = loss + 0.000000001 * reg_l2
 
     # We could add some weight decay as well here, see lasagne.regularization.
 
@@ -193,10 +221,11 @@ def prepare_network(network_input_size, num_classes, params):
     # Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
     lasagne_params = lasagne.layers.get_all_params(network, trainable=True)
     # updates = lasagne.updates.nesterov_momentum(
-    #         loss, params, learning_rate=0.000249, momentum=0.5)
+            # loss, lasagne_params, learning_rate=0.000149, momentum=0.2)
     theano_lr = T.scalar('lr')
 
-    updates = lasagne.updates.rmsprop(loss, lasagne_params, learning_rate=theano_lr) #0.000249
+    updates = lasagne.updates.rmsprop(
+        loss, lasagne_params, learning_rate=theano_lr) #0.000249
 
     # Create a loss expression for validation/testing. The crucial difference
     # here is that we do a deterministic forward pass through the network,
@@ -212,13 +241,13 @@ def prepare_network(network_input_size, num_classes, params):
 
     # Compile a function performing a training step on a mini-batch (by giving
     # the updates dictionary) and returning the corresponding training loss:
-    train_fn = theano.function([input_var, target_var, theano_lr], loss, updates=updates)
+    train_fn = theano.function(
+        [input_var, target_var, theano_lr], loss, updates=updates, on_unused_input='warn')
 
     # Compile a second function computing the validation loss and accuracy:
     val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
 
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
-#     predict_fn = theano.function([input_var], T.argmax(test_prediction, axis=1))
     predict_fn = theano.function([input_var], test_prediction)
 
     return network, train_fn, predict_fn, val_fn, input_var, target_var, loss
@@ -344,9 +373,14 @@ def tile_pad(this_slice, desired_width):
     if this_slice.shape[1] == desired_width:
         return this_slice
     else:
-        num_tiles = np.ceil(float(desired_width) / this_slice.shape[1])
-        tiled = np.tile(this_slice, (1, num_tiles))
-        return tiled[:, :desired_width]
+        num_tiles = int(np.ceil(float(desired_width) / this_slice.shape[1]))
+        if len(this_slice.shape) == 3:
+            # multi-chanell image
+            tiled = np.tile(this_slice, (1, num_tiles, 1))
+            return tiled[:, :desired_width, :]
+        else:
+            tiled = np.tile(this_slice, (1, num_tiles))
+            return tiled[:, :desired_width]
 
 
 def iterate_minibatches(inputs, targets, batchsize, slice_width, shuffle=False):
@@ -368,14 +402,14 @@ def iterate_minibatches(inputs, targets, batchsize, slice_width, shuffle=False):
 
         # take a single random slice from each of the training examples
         these_spectrograms = [inputs[xx] for xx in excerpt]
-        Xs = [tile_pad(x[0], slice_width) for x in these_spectrograms]
+        Xs = [tile_pad(x, slice_width) for x in these_spectrograms]
         Xs_to_return = cnn_utils.form_correct_shape_array(Xs)
         yield Xs_to_return, targets[excerpt]
 
 
 def generate_balanced_minibatches_multiclass(
         inputs, targets, items_per_minibatch, slice_width,
-        augment_options=None, shuffle=True):
+        augment_options=None, shuffle=True, return_mask=False):
 
     assert len(inputs) == len(targets)
 
@@ -416,23 +450,39 @@ def generate_balanced_minibatches_multiclass(
         for idx in full_idxs:
             this_image = inputs[idx]
             this_image = tile_pad(this_image, slice_width)
-            this_image = augment_slice(this_image, **augment_options)
+            if augment_options is not None:
+                this_image = augment_slice(this_image, **augment_options)
             training_images.append(this_image)
 
-        yield (cnn_utils.form_correct_shape_array(training_images), targets[full_idxs])
+        if return_mask:
+            lengths = [inputs[idx].shape[1] for idx in full_idxs]
+            masks = np.zeros((len(full_idxs), slice_width))
+            for count, l in enumerate(lengths):
+                masks[count, :l] = 1
+            yield (cnn_utils.form_correct_shape_array(training_images),
+                targets[full_idxs], masks)
+        else:
+            yield (cnn_utils.form_correct_shape_array(training_images), targets[full_idxs])
 
 
-def form_slices_validation_set(data, slice_width, do_median_normalise, key='val_'):
+def form_slices_validation_set(data, slice_width, do_median_normalise, key='val_', return_mask=False):
 
     val_X = [tile_pad(xx, slice_width) for xx in data[key + 'X']]
     if do_median_normalise:
         val_X = [audio_utils.median_normalise(xx) for xx in val_X]
-    val_X = cnn_utils.form_correct_shape_array(val_X)
+    # val_X = cnn_utils.form_correct_shape_array(val_X)
     val_y = np.hstack(data[key + 'y'])
 
-    print "validation set is of size ", val_X.shape, val_y.shape
+    print "validation set is of size ", len(val_X), val_X[0].shape, val_y.shape
 
-    return val_X, val_y
+    if return_mask:
+        lengths = [xx.shape[1] for xx in data[key + 'X']]
+        masks = np.zeros((len(lengths), slice_width), np.float32)
+        for count, l in enumerate(lengths):
+            masks[count, :l] = 1
+        return val_X, val_y, masks
+    else:
+        return val_X, val_y
 
 
 def create_numbered_folder(path, must_be_biggest=True):
