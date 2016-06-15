@@ -26,9 +26,9 @@ def load_splits(test_fold):
     return train_files, test_files
 
 
-def load_data_helper(fname, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, A, B):
+def load_data_helper(fname, SPEC_TYPE, LEARN_LOG, A, B):
     # load spectrogram and annotations
-    spec = pickle.load(open(spec_pkl_dir + SPEC_TYPE + '/' + fname))[-SPEC_HEIGHT:, :]
+    spec = pickle.load(open(spec_pkl_dir + SPEC_TYPE + '/' + fname))
     annots, wav, sample_rate = pickle.load(open(annotation_pkl_dir + fname))
 
     # reshape annotations
@@ -44,14 +44,17 @@ def load_data_helper(fname, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, A, B):
     return spec, annots
 
 
-def load_data(fnames, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, CLASSNAME, A, B):
+def load_data(fnames, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B):
     # load data and make list of specsamplers
     X = []
     y = []
 
     for fname in fnames:
-        spec, annots = load_data_helper(fname, SPEC_TYPE, SPEC_HEIGHT, LEARN_LOG, A, B)
+        spec, annots = load_data_helper(fname, SPEC_TYPE, LEARN_LOG, A, B)
         X.append(spec)
         y.append(annots[CLASSNAME])
+
+    height = min(xx.shape[0] for xx in X)
+    X = [xx[-height:, :] for xx in X]
 
     return X, y
