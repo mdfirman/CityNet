@@ -134,18 +134,6 @@ class SpecSampler(object):
             else:
                 yield X.astype(np.float32), y.astype(np.int32)
 
-#
-# class MyBatch(nolearn.lasagne.BatchIterator):
-#     def __iter__(self):
-#         for _ in range(32):
-#             yield self.X.sample(self.batch_size)
-#
-#
-# class MyBatchTest(nolearn.lasagne.BatchIterator):
-#     def __iter__(self):
-#         for idx in range(128):
-#             yield self.X.sample(self.batch_size, seed=idx)
-
 
 class HelpersBaseClass(object):
     # sub dir is a class attribute so subclasses can override it
@@ -170,8 +158,10 @@ class SaveHistory(HelpersBaseClass):
         for key, item in history[-1].iteritems():
             if type(item) == np.bool_:
                 history[-1][key] = bool(item)
+            elif type(item).__module__ == 'numpy':
+                history[-1][key] = float(item)
 
-        yaml.dump([history[-1]], open(self.savepath, 'a'))
+        yaml.dump([history[-1]], open(self.savepath, 'a'), default_flow_style=False)
 
 
 class SaveWeights(HelpersBaseClass):

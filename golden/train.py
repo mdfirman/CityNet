@@ -1,18 +1,13 @@
 # creating spectrograms from all the files, and saving split labelled versions to disk ready for machine learning
 import matplotlib.pyplot as plt
 
-import os
 import sys
 import cPickle as pickle
 import numpy as np
-import time
-import random
-import yaml
 
 import nolearn
 import nolearn.lasagne
 import lasagne
-#import theano.tensor as T
 
 from train_helpers import SpecSampler
 import train_helpers
@@ -22,12 +17,7 @@ from ml_helpers.evaluation import plot_confusion_matrix
 
 RUN_TYPE = 'standard_spec'
 
-logging_dir = data_io.base + 'predictions/%s/' % RUN_TYPE
-train_helpers.force_make_dir(logging_dir)
-sys.stdout = ui.Logger(logging_dir + 'log.txt')
-
-
-# loadingdata options
+# loading data options
 TRAINING_DATA = 'golden'
 TEST_FOLD = 1
 CLASSNAME = 'biotic'
@@ -49,6 +39,10 @@ CONV_FILTER_WIDTH = 4
 WIGGLE_ROOM = 5
 MAX_EPOCHS = 50
 LEARNING_RATE = 0.0005
+
+logging_dir = data_io.base + 'predictions/%s/%s/' % (RUN_TYPE, CLASSNAME)
+train_helpers.force_make_dir(logging_dir)
+sys.stdout = ui.Logger(logging_dir + 'log.txt')
 
 # loading data
 if TRAINING_DATA == 'golden':
@@ -74,8 +68,6 @@ net = train_helpers.create_net(SPEC_HEIGHT, HWW, LEARN_LOG, NUM_FILTERS,
     WIGGLE_ROOM, CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM)
 
 save_history = train_helpers.SaveHistory(logging_dir)
-save_weights = train_helpers.SaveWeights(logging_dir, 2, 20)
-early_stopping = train_helpers.EarlyStopping(10)
 
 net = nolearn.lasagne.NeuralNet(
     layers=net['prob'],
@@ -87,7 +79,7 @@ net = nolearn.lasagne.NeuralNet(
     batch_iterator_test=test_sampler,
     train_split=MyTrainSplit(None),
     custom_epoch_scores=[('N/A', lambda x, y: 0.0)],
-    on_epoch_finished=[save_weights, save_history, early_stopping],
+    on_epoch_finished=[save_weights, save_history],
     check_input=False
 )
 net.fit(None, None)
