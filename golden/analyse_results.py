@@ -16,7 +16,7 @@ def force_make_dir(dirpath):
 
 
 run_type = 'mel32_train_golden'
-classname = 'biotic'
+classname = 'anthrop'
 SPEC_TYPE = 'mel'  # only for visualisation
 VOLUME_BOOST = 5  # for saving wav files
 
@@ -30,6 +30,87 @@ annotation_pkl_dir = base_dir + 'extracted/annotations/'
 savedir = force_make_dir(results_dir + '../analysis/')
 per_file_plots_dir = force_make_dir(results_dir + '../per_file_plots/')
 wav_results_dir = force_make_dir(results_dir + '../wav_results/')
+
+
+##############################################################################
+# ASSESS FP ETC
+##############################################################################
+print "\n\nResults across all files:"
+total = dict.fromkeys(['tm', 'tp', 'tn', 'fp', 'fn'], 0)
+all_y_true = []
+all_y_pred = []
+sums_pred_hard = []
+sums_pred_soft = []
+sums_gt = []
+
+for fname in os.listdir(results_dir):
+    y_true, y_pred_proba = pickle.load(open(results_dir + fname))
+    y_pred_class = y_pred_proba[:, 1] > 0.5
+
+    total['tm'] += y_true.shape[0]
+    total['tp'] += np.logical_and(y_true == y_pred_class, y_true == 1).sum()
+    total['tn'] += np.logical_and(y_true == y_pred_class, y_true == 0).sum()
+    total['fp'] += np.logical_and(y_true != y_pred_class, y_true == 0).sum()
+    total['fn'] += np.logical_and(y_true != y_pred_class, y_true == 1).sum()
+
+    all_y_true.append(y_true)
+    all_y_pred.append(y_pred_class)
+
+    slice_size = 60.0 / y_true.shape[0]
+    sums_gt.append(y_true.sum() * slice_size)
+    sums_pred_hard.append(y_pred_class.sum() * slice_size)
+    sums_pred_soft.append(y_pred_proba[:, 1].sum() * slice_size)
+
+
+for key in ['tp', 'tn', 'fp', 'fn']:
+    total[key] *= slice_size
+    print key.ljust(5), '%0.2f' % total[key]
+
+
+##############################################################################
+# PLOTTING CONFUSION MATRIX
+##############################################################################
+from sklearn.metrics import confusion_matrix
+
+print "\n\nPlotting conf matrix:"
+all_y_true = np.hstack(all_y_true)
+all_y_pred = np.hstack(all_y_pred)
+cm = (confusion_matrix(all_y_true, all_y_pred) * slice_size).astype(int)[::-1]
+print cm
+fig = plt.figure(figsize=(4, 4))
+ax = fig.add_axes((0.18,0.1,0.8,0.8))
+ax = sns.heatmap(cm, annot=True, fmt="d", ax=ax)
+plt.savefig(savedir + 'confusion_matrix1.pdf')
+ax.grid('off')
+ax.set_aspect(1.0)
+plt.xticks([0.5, 1.5], ['None', classname.capitalize()])
+plt.yticks([0.5, 1.5], ['None', classname.capitalize()])
+plt.tick_params(axis='both', which='major', labelsize=16)
+plt.ylabel('Actual', fontsize=20)
+plt.xlabel('Predicted', fontsize=20)
+plt.savefig(savedir + 'confusion_matrix.pdf')
+plt.savefig(savedir + 'confusion_matrix.png', dpi=800)
+plt.close()
+
+
+##############################################################################
+# PLOT PER-FILE SCATTER PLOT
+##############################################################################
+plt.figure(figsize=(5, 5))
+plt.plot(sums_gt, sums_pred_hard, 'ob', markersize=3, label='Hard')
+plt.plot(sums_gt, sums_pred_soft, '^r', markersize=4, label='Soft')
+plt.plot([0, 60], [0, 60],':')
+plt.gca().set_aspect('equal')
+plt.xlabel('Ground truth (s)', fontsize=15)
+plt.ylabel('Predicted (s)', fontsize=15)
+leg = plt.legend(loc='upper left', frameon=True)
+leg.get_frame().set_edgecolor([0.7, 0.7, 0.7])
+leg.get_frame().set_linewidth(1.0)
+plt.title('Per-file predictions for %s sound' % classname)
+plt.savefig(savedir + 'overall_success.pdf')
+plt.savefig(savedir + 'overall_success.png', dpi=800)
+plt.close()
+
 
 ##############################################################################
 # PLOTTING RESULTS SPECTROGRAMS
@@ -70,84 +151,6 @@ for fname in os.listdir(results_dir):
 
     print ".",
 
-
-##############################################################################
-# ASSESS FP ETC
-##############################################################################
-print "\n\nResults across all files:"
-total = dict.fromkeys(['tm', 'tp', 'tn', 'fp', 'fn'], 0)
-all_y_true = []
-all_y_pred = []
-sums_pred_hard = []
-sums_pred_soft = []
-sums_gt = []
-
-slice_size = 60.0 / y_true.shape[0]
-
-for fname in os.listdir(results_dir):
-    y_true, y_pred_proba = pickle.load(open(results_dir + fname))
-    y_pred_class = y_pred_proba[:, 1] > 0.5
-
-    total['tm'] += y_true.shape[0]
-    total['tp'] += np.logical_and(y_true == y_pred_class, y_true == 1).sum()
-    total['tn'] += np.logical_and(y_true == y_pred_class, y_true == 0).sum()
-    total['fp'] += np.logical_and(y_true != y_pred_class, y_true == 0).sum()
-    total['fn'] += np.logical_and(y_true != y_pred_class, y_true == 1).sum()
-
-    all_y_true.append(y_true)
-    all_y_pred.append(y_pred_class)
-
-    sums_gt.append(y_true.sum() * slice_size)
-    sums_pred_hard.append(y_pred_class.sum() * slice_size)
-    sums_pred_soft.append(y_pred_proba[:, 1].sum() * slice_size)
-
-
-for key in ['tp', 'tn', 'fp', 'fn']:
-    total[key] *= slice_size
-    print key.ljust(5), '%0.2f' % total[key]
-
-
-##############################################################################
-# PLOT PER-FILE SCATTER PLOT
-##############################################################################
-plt.figure(figsize=(5, 5))
-plt.plot(sums_gt, sums_pred_hard, 'ob', markersize=3, label='Hard')
-plt.plot(sums_gt, sums_pred_soft, '^r', markersize=4, label='Soft')
-plt.plot([0, 60], [0, 60],':')
-plt.gca().set_aspect('equal')
-plt.xlabel('Ground truth (s)', fontsize=15)
-plt.ylabel('Predicted (s)', fontsize=15)
-leg = plt.legend(loc='upper left', frameon=True)
-leg.get_frame().set_edgecolor([0.7, 0.7, 0.7])
-leg.get_frame().set_linewidth(1.0)
-plt.title('Per-file predictions for %s sound' % classname)
-plt.savefig(savedir + 'overall_success.pdf')
-plt.savefig(savedir + 'overall_success.png', dpi=800)
-
-
-##############################################################################
-# PLOTTING CONFUSION MATRIX
-##############################################################################
-from sklearn.metrics import confusion_matrix
-
-print "\n\nPlotting conf matrix:"
-all_y_true = np.hstack(all_y_true)
-all_y_pred = np.hstack(all_y_pred)
-cm = (confusion_matrix(all_y_true, all_y_pred) * slice_size).astype(int)[::-1]
-
-fig = plt.figure(figsize=(4, 4))
-ax = fig.add_axes((0.16,0.1,0.83,0.85))
-ax = sns.heatmap(cm, annot=True, fmt="d", ax=ax)
-ax.grid('off')
-ax.set_aspect(1.0)
-plt.xticks([0.5, 1.5], ['None', classname.capitalize()])
-plt.yticks([0.5, 1.5], ['None', classname.capitalize()])
-plt.tick_params(axis='both', which='major', labelsize=16)
-plt.ylabel('Actual', fontsize=20)
-plt.xlabel('Predicted', fontsize=20)
-plt.savefig(savedir + 'confusion_matrix.pdf')
-plt.savefig(savedir + 'confusion_matrix.png', dpi=800)
-plt.close()
 
 ##############################################################################
 # SAVING WAV FILES
