@@ -128,12 +128,7 @@ def train_golden_all_folds(RUN_TYPE, SPEC_TYPE, TRAINING_DATA, CLASSNAME, HWW,
 
 
 if __name__ == '__main__':
-    train_golden_all_folds(
-        RUN_TYPE = 'standard_spec_tmp',
-
-        # loading data options
-        TRAINING_DATA = 'golden',
-        CLASSNAME = 'biotic',
+    params = dict(
         SPEC_TYPE = 'mel',
 
         # data preprocessing options
@@ -149,6 +144,15 @@ if __name__ == '__main__':
         NUM_DENSE_UNITS = 128,
         CONV_FILTER_WIDTH = 4,
         WIGGLE_ROOM = 5,
-        MAX_EPOCHS = 2,
+        MAX_EPOCHS = 50,
         LEARNING_RATE = 0.0005,
+        )
+
+    train_golden_all_folds(
+        RUN_TYPE = 'mel32_train_golden',
+
+        # loading data options
+        TRAINING_DATA = 'golden',
+        CLASSNAME = 'biotic',
+        **params
         )
