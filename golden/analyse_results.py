@@ -16,7 +16,7 @@ def force_make_dir(dirpath):
 
 
 run_type = 'mel32_train_golden'
-classname = 'anthrop'
+classname = 'biotic'
 SPEC_TYPE = 'mel'  # only for visualisation
 VOLUME_BOOST = 5  # for saving wav files
 
@@ -66,6 +66,10 @@ for key in ['tp', 'tn', 'fp', 'fn']:
     total[key] *= slice_size
     print key.ljust(5), '%0.2f' % total[key]
 
+print "Accuracy:"
+print float(total['tp'] + total['tn']) / sum(total[key] for key in ['tp', 'tn', 'fp', 'fn'])
+print total['tm']
+sds
 
 ##############################################################################
 # PLOTTING CONFUSION MATRIX
