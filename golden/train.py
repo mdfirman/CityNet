@@ -100,7 +100,7 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
     net.save_params_to(results_savedir + "weights_%d.pkl" % TEST_FOLD)
 
 
-def train_golden_all_folds(RUN_TYPE, SPEC_TYPE, TRAINING_DATA, CLASSNAME, HWW,
+def train_golden_all_folds(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
         DO_AUGMENTATION,
         LEARN_LOG, A, B, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
         NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE):
@@ -112,10 +112,7 @@ def train_golden_all_folds(RUN_TYPE, SPEC_TYPE, TRAINING_DATA, CLASSNAME, HWW,
         sys.stdout = ui.Logger(logging_dir + 'log.txt')
 
         # loading data
-        if TRAINING_DATA == 'golden':
-            train_files, test_files = data_io.load_splits(test_fold)
-        else:
-            raise Exception("Not implemented!")
+        train_files, test_files = data_io.load_splits(test_fold)
 
         train_X, train_y = data_io.load_data(train_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
         test_X, test_y = data_io.load_data(test_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
@@ -125,6 +122,31 @@ def train_golden_all_folds(RUN_TYPE, SPEC_TYPE, TRAINING_DATA, CLASSNAME, HWW,
                 LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
                 NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE,
                 test_fold)
+
+
+def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
+        DO_AUGMENTATION,
+        LEARN_LOG, A, B, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
+        NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE):
+
+    logging_dir = data_io.base + 'predictions/%s/%s/' % (RUN_TYPE, CLASSNAME)
+    train_helpers.force_make_dir(logging_dir)
+    sys.stdout = ui.Logger(logging_dir + 'log.txt')
+
+    # loading testing data
+    # (remember, here we are testing on ALL golden... so it doesn't matter what the test fold is
+    train_files, test_files = data_io.load_splits(test_fold=0)
+    test_X, test_y = data_io.load_data(
+        test_files + train_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
+
+    # loading training data...
+    train_X, train_y = data_io.load_large_data(
+        SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=1000000)
+
+    train_and_test(train_X, test_X, train_y, test_y, test_files,
+            logging_dir, CLASSNAME, HWW, DO_AUGMENTATION,
+            LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
+            NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE)
 
 
 if __name__ == '__main__':
@@ -148,11 +170,19 @@ if __name__ == '__main__':
         LEARNING_RATE = 0.0005,
         )
 
-    train_golden_all_folds(
-        RUN_TYPE = 'mel32_train_golden',
+    TRAINING_DATA = 'large'
 
-        # loading data options
-        TRAINING_DATA = 'golden',
-        CLASSNAME = 'biotic',
-        **params
-        )
+    if TRAINING_DATA == 'golden':
+        train_golden_all_folds(
+            RUN_TYPE = 'mel32_train_golden',
+            CLASSNAME = 'biotic',
+            **params
+            )
+    else:
+        params['NUM_FILTERS'] *= 2
+        params['NUM_DENSE_UNITS'] *= 2
+        train_large_test_golden(
+            RUN_TYPE = 'mel32_train_large',
+            CLASSNAME = 'biotic',
+            **params
+            )
