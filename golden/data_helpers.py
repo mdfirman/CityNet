@@ -11,12 +11,25 @@ human_noises = set(['mix traffic', 'braking', 'voices', 'electrical',
                   'siren', 'coughing', 'music', 'horn', 'startthecar', 'bells',
                     'applause', 'dog bark', 'road traffic', 'braking vehicle (road or rail)',
                    'human voices', 'mechanical', 'vehicle horn (road or rail)',
-                   'air traffic', 'vehicle alarm'])
+                   'air traffic', 'vehicle alarm', 'human voice', 'machinery',
+                   'church bell', 'breaking vehicle', 'deck lowering', 'car horn',
+                   'rail traffic', 'alarm', 'vehicle horn',
+                   'building ventilation system', 'car alarm', 'rock', 'church bells',
+                   'train horn', 'mobile phone', 'train station announcement', 'hammering',
+                   'door opening', 'dog barking', 'vehicle breaking', 'cat',
+                   'glass into bins', 'barking dog', 'television', 'sweeping broom',
+                   'ball bouncing', 'bat hitting ball', 'laughing', 'clapping', 'camera',
+                   'train doors (beeping)', 'lawnmower'])
 
 animal_noises = set(['bird', 'wing beats', 'bat', 'fox',
-                     'grey squirrel', 'invertebrate', 'insect', 'animal'])
+                     'grey squirrel', 'invertebrate', 'insect', 'animal',
+                     'wings beating',  'russling leaves (animal)',
+                     'amphibian', 'squirrel', 'russling vegetation (animal)'])
 
-other = set(['rain', 'unknown sound', 'electrical disturbance', 'vegetation', 'wind'])
+other = set(['rain', 'unknown sound', 'electrical disturbance', 'vegetation',
+            'wind', 'unknown', 'metalic sound', 'dripping water', 'shower',
+            'metalic', 'rubbish bag','water dripping', 'water splashing',
+            'rainfall on vegetation'])
 
 
 def load_annotations(fname, labels_dir=labels_dir, wav_dir=wav_dir):
