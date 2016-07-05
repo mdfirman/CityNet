@@ -166,13 +166,41 @@ def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
             NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE, NOISY_LOSS=False)
 
 
+def train_large_splits(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
+        DO_AUGMENTATION,
+        LEARN_LOG, A, B, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
+        NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE):
+
+    print CLASSNAME, RUN_TYPE
+
+    for test_fold in [0, 1, 2]:
+
+        logging_dir = data_io.base + 'predictions/%s/%s/' % (RUN_TYPE, CLASSNAME)
+        train_helpers.force_make_dir(logging_dir)
+        sys.stdout = ui.Logger(logging_dir + 'log.txt')
+
+        # split is defined on the large dataset
+        train_files, test_files = data_io.load_splits(test_fold=test_fold, large_data=True)
+
+        test_X, test_y = data_io.load_data(
+            test_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, is_golden=False)
+        train_X, train_y = data_io.load_data(
+            train_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, is_golden=False)
+        test_X = test_X[:1000]
+        test_y = test_y[:1000]
+
+        train_and_test(train_X, test_X, train_y, test_y, test_files,
+                logging_dir, CLASSNAME, HWW, DO_AUGMENTATION,
+                LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
+                NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE,
+                test_fold)
+
+
 if __name__ == '__main__':
     params = dict(
         SPEC_TYPE = 'mel',
 
         # data preprocessing options
-        A = 0.018,
-        B = 10.04,
         HWW = 5,
         LEARN_LOG = 0,
         DO_AUGMENTATION = 1,
@@ -183,11 +211,15 @@ if __name__ == '__main__':
         NUM_DENSE_UNITS = 128,
         CONV_FILTER_WIDTH = 4,
         WIGGLE_ROOM = 5,
-        MAX_EPOCHS = 20,
+        MAX_EPOCHS = 50,
         LEARNING_RATE = 0.0005,
-        )
 
-    TRAINING_DATA = 'golden'
+        CLASSNAME = 'biotic'
+        )
+    params['B'] = 10.0 if params['CLASSNAME'] == 'biotic' else 1.00
+    params['A'] = 0.001 if params['CLASSNAME'] == 'biotic' else 0.01
+
+    TRAINING_DATA = 'large'
 
     print "Training data: ", TRAINING_DATA
     for key, val in params.iteritems():
@@ -196,14 +228,12 @@ if __name__ == '__main__':
     if TRAINING_DATA == 'golden':
         train_golden_all_folds(
             RUN_TYPE = 'mel32_train_golden_new',
-            CLASSNAME = 'biotic',
             **params
             )
     else:
         params['NUM_FILTERS'] *= 4
         params['NUM_DENSE_UNITS'] *= 4
-        train_large_test_golden(
-            RUN_TYPE = 'mel32_train_large_new',
-            CLASSNAME = 'anthrop',
+        train_large_splits(
+            RUN_TYPE = 'mel32_large_splits',
             **params
             )
