@@ -21,7 +21,7 @@ classname = 'biotic'
 SPEC_TYPE = 'mel'  # only for visualisation
 VOLUME_BOOST = 5  # for saving wav files
 
-base_dir = '/media/michael/Seagate/engage/alison_data/golden_set/'
+base_dir = '/media/michael/Engage/data/audio/alison_data/golden_set/'
 
 results_dir = base_dir + 'predictions/%s/%s/per_file_predictions/' % (run_type, classname)
 spec_pkl_dir = base_dir + 'extracted/specs/'

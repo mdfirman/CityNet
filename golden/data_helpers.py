@@ -1,9 +1,8 @@
 import pandas as pd
 import librosa
 
-labels_dir = '/media/michael/Seagate/engage/alison_data/golden_set/labels/Golden/'
-wav_dir = '/media/michael/Seagate/engage/alison_data/golden_set/wavs/'
-
+labels_dir = '/media/michael/Engage/data/audio/alison_data/golden_set/labels/Golden/'
+wav_dir = '/media/michael/Engage/data/audio/alison_data/golden_set/wavs/'
 
 human_noises = set(['mix traffic', 'braking', 'voices', 'electrical',
                    'anthropogenic unknown', 'airplane', 'beep',

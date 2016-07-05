@@ -5,19 +5,19 @@ import numpy as np
 from scipy.ndimage.interpolation import zoom
 
 # golden data
-base = '/media/michael/Seagate/engage/alison_data/golden_set/'
+base = '/media/michael/Engage/data/audio/alison_data/golden_set/'
 annotation_pkl_dir = base + 'extracted/annotations/'
 spec_pkl_dir = base + 'extracted/specs/'
 log_dir = base + 'ml_runs/'
 
 # large data
-large_base = '/media/michael/Seagate/engage/alison_data/large_dataset/'
+large_base = '/media/michael/Engage/data/audio/alison_data/large_dataset/'
 large_spec_pkl_dir = large_base + 'specs/'
 large_annotation_pkl_dir = large_base + 'annots/'
 
 
 def load_splits(test_fold):
-    splits = yaml.load(open(base + 'splits/folds_6.yaml'))
+    splits = yaml.load(open(base + 'splits/folds.yaml'))
 
     train_files = [xx for idx, split in enumerate(splits) for xx in split if idx != test_fold]
     test_files = splits[test_fold]
