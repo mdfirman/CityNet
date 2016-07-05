@@ -1,5 +1,6 @@
 import pandas as pd
 import librosa
+import os
 
 labels_dir = '/media/michael/Engage/data/audio/alison_data/golden_set/labels/Golden/'
 wav_dir = '/media/michael/Engage/data/audio/alison_data/golden_set/wavs/'
@@ -33,13 +34,18 @@ other = set(['rain', 'unknown sound', 'electrical disturbance', 'vegetation',
 
 def load_annotations(fname, labels_dir=labels_dir, wav_dir=wav_dir):
 
-    pd_annots = pd.read_csv(labels_dir + fname)
+    csv_fname = labels_dir + fname.replace('.wav', '-sceneRect.csv')
+    if os.path.exists(csv_fname):
+        pd_annots = pd.read_csv(csv_fname)
+    else:
+        pd_annots = pd.DataFrame()
+        print "Warning - no annotations found for %s" % fname
 
     # where we'll temp store the blank snippets for this file
     blank_snippets = []
 
     # load file and convert to spectrogram
-    wav, sample_rate = librosa.load(wav_dir + fname.replace('-sceneRect.csv', '.wav'), 22050)
+    wav, sample_rate = librosa.load(wav_dir + fname, 22050)
 
     # create label vector...
     biotic = 0 * wav
@@ -49,8 +55,8 @@ def load_annotations(fname, labels_dir=labels_dir, wav_dir=wav_dir):
     for _, annot in pd_annots.iterrows():
 
         # fill in the label vector
-        start_point = int(annot['LabelStartTime_Seconds'] * sample_rate)
-        end_point =  int(annot['LabelEndTime_Seconds'] * sample_rate)
+        start_point = int(float(annot['LabelStartTime_Seconds']) * sample_rate)
+        end_point =  int(float(annot['LabelEndTime_Seconds']) * sample_rate)
 
         if annot['Label'].lower() in human_noises:
             anthropogenic[start_point:end_point] = 1

@@ -16,8 +16,9 @@ large_spec_pkl_dir = large_base + 'specs/'
 large_annotation_pkl_dir = large_base + 'annots/'
 
 
-def load_splits(test_fold):
-    splits = yaml.load(open(base + 'splits/folds.yaml'))
+def load_splits(test_fold, large_data=False):
+    _base_path = large_base if large_data else base
+    splits = yaml.load(open(_base_path + 'splits/folds.yaml'))
 
     train_files = [xx for idx, split in enumerate(splits) for xx in split if idx != test_fold]
     test_files = splits[test_fold]
@@ -51,13 +52,13 @@ def load_data_helper(fname, SPEC_TYPE, LEARN_LOG, A, B, is_golden=True):
     return spec, annots
 
 
-def load_data(fnames, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B):
+def load_data(fnames, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, is_golden=True):
     # load data and make list of specsamplers
     X = []
     y = []
 
     for fname in fnames:
-        spec, annots = load_data_helper(fname, SPEC_TYPE, LEARN_LOG, A, B)
+        spec, annots = load_data_helper(fname, SPEC_TYPE, LEARN_LOG, A, B, is_golden)
         X.append(spec)
         y.append(annots[CLASSNAME])
 
