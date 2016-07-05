@@ -17,17 +17,10 @@ large_annotation_pkl_dir = large_base + 'annots/'
 
 
 def load_splits(test_fold):
-    splits = yaml.load(open(base + 'splits/folds.yaml'))
+    splits = yaml.load(open(base + 'splits/folds_6.yaml'))
 
-    if test_fold == 0:
-        train_files = splits[1] + splits[2]
-        test_files = splits[0]
-    elif test_fold == 1:
-        train_files = splits[0] + splits[2]
-        test_files = splits[1]
-    elif test_fold == 2:
-        train_files = splits[0] + splits[1]
-        test_files = splits[2]
+    train_files = [xx for idx, split in enumerate(splits) for xx in split if idx != test_fold]
+    test_files = splits[test_fold]
 
     return train_files, test_files
 

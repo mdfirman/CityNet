@@ -76,7 +76,9 @@ class SpecSampler(object):
 
     def __iter__(self): ##, num_per_class, seed=None
         #num_samples = num_per_class * 2
-        channels = self.specs.shape[0] + 3
+        channels = self.specs.shape[0]
+        if not self.learn_log:
+            channels += 3
         height = self.specs.shape[1]
 
         if self.seed is not None:
@@ -105,8 +107,8 @@ class SpecSampler(object):
                     # X[count, 0] = (X[count, 0] - X[count, 0].mean()) / X[count, 0].std()
                     X[count, 0] = (X[count, 1] - X[count, 1].mean(0, keepdims=True)) / (X[count, 1].std(0, keepdims=True) + 0.001)
 
-                X[count, 2] = (X[count, 1] - X[count, 1].mean()) / X[count, 1].std()
-                X[count, 3] = X[count, 1] / X[count, 1].max()
+                    X[count, 2] = (X[count, 1] - X[count, 1].mean()) / X[count, 1].std()
+                    X[count, 3] = X[count, 1] / X[count, 1].max()
 
                 y[count] = self.labels[loc]
                 if self.learn_log:
@@ -217,9 +219,11 @@ def create_net(SPEC_HEIGHT, HWW, LEARN_LOG, NUM_FILTERS,
     else:
         from lasagne.layers import batch_norm
 
+    channels = 1 if LEARN_LOG else 4
+
     # main input layer, then logged
     net = {}
-    net['input'] = InputLayer((None, 4, SPEC_HEIGHT, HWW*2), name='input')
+    net['input'] = InputLayer((None, channels, SPEC_HEIGHT, HWW*2), name='input')
 
     if LEARN_LOG:
         off = lasagne.init.Constant(0.01)
@@ -228,7 +232,7 @@ def create_net(SPEC_HEIGHT, HWW, LEARN_LOG, NUM_FILTERS,
         net['input_logged'] = Log1Plus(net['input'], off, mult)
 
         # logging the median and multiplying by -1
-        net['input_med'] = InputLayer((None, 1, SPEC_HEIGHT, HWW*2), name='input_med')
+        net['input_med'] = InputLayer((None, channels, SPEC_HEIGHT, HWW*2), name='input_med')
         net['med_logged'] = Log1Plus(
             net['input_med'], off=net['input_logged'].off, mult=net['input_logged'].mult)
         net['med_logged'] = ExpressionLayer(net['med_logged'], lambda X: -X)
@@ -252,3 +256,15 @@ def create_net(SPEC_HEIGHT, HWW, LEARN_LOG, NUM_FILTERS,
     net['prob'] = NonlinearityLayer(net['fc8'], softmax)
 
     return net
+
+
+def noisy_loss_objective(predictions, targets):
+    # epsilon = np.float32(1.0e-6)
+    one = np.float32(1.0)
+    beta = np.float32(0.75)
+    # pred = T.clip(predictions, epsilon, one - epsilon)
+
+    # assume targets are just indicator values...
+    A = (one - targets) * (beta + (one - beta) * T.round(predictions[:, 0])) * T.log(predictions[:, 0])
+    B = targets * T.log(predictions[:, 1])
+    return - (A + B)

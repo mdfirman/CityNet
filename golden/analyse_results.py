@@ -15,7 +15,8 @@ def force_make_dir(dirpath):
     return dirpath
 
 
-run_type = 'mel32_train_golden'
+# run_type = 'mel32_train_large_hard_bootstrap'
+run_type = 'mel32_train_large'#_noisy_loss'
 classname = 'biotic'
 SPEC_TYPE = 'mel'  # only for visualisation
 VOLUME_BOOST = 5  # for saving wav files
@@ -66,10 +67,13 @@ for key in ['tp', 'tn', 'fp', 'fn']:
     total[key] *= slice_size
     print key.ljust(5), '%0.2f' % total[key]
 
-print "Accuracy:"
+print "Unbalanced accuracy:"
 print float(total['tp'] + total['tn']) / sum(total[key] for key in ['tp', 'tn', 'fp', 'fn'])
-print total['tm']
-sds
+
+print "Balanced accuracy:"
+A = float(total['tp']) / sum(total[key] for key in ['tp', 'fn'])
+B = float(total['tn']) / sum(total[key] for key in ['fp', 'tn'])
+print (A + B) / 2.0
 
 ##############################################################################
 # PLOTTING CONFUSION MATRIX

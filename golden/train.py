@@ -19,7 +19,7 @@ from ml_helpers.evaluation import plot_confusion_matrix
 def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
         CLASSNAME, HWW, DO_AUGMENTATION, LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM,
         CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS,
-        LEARNING_RATE, TEST_FOLD=99):
+        LEARNING_RATE, NOISY_LOSS, TEST_FOLD=99):
     '''
     Doesn't do any data loading - assumes the train and test data are passed
     in as parameters!
@@ -39,6 +39,11 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
 
     save_history = train_helpers.SaveHistory(logging_dir)
 
+    if NOISY_LOSS:
+        objective_loss_function = train_helpers.noisy_loss_objective
+    else:
+        objective_loss_function = lasagne.objectives.categorical_crossentropy
+
     net = nolearn.lasagne.NeuralNet(
         layers=net['prob'],
         max_epochs=MAX_EPOCHS,
@@ -50,6 +55,7 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
         train_split=MyTrainSplit(None),
         custom_epoch_scores=[('N/A', lambda x, y: 0.0)],
         on_epoch_finished=[save_history],
+        objective_loss_function=objective_loss_function,
         check_input=False
     )
     net.fit(None, None)
@@ -105,7 +111,9 @@ def train_golden_all_folds(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
         LEARN_LOG, A, B, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
         NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE):
 
-    for test_fold in [0, 1, 2]:
+    print CLASSNAME, RUN_TYPE
+
+    for test_fold in [0, 1, 2, 3, 4, 5]:
 
         logging_dir = data_io.base + 'predictions/%s/%s/' % (RUN_TYPE, CLASSNAME)
         train_helpers.force_make_dir(logging_dir)
@@ -129,6 +137,8 @@ def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
         LEARN_LOG, A, B, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
         NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE):
 
+    print CLASSNAME, RUN_TYPE
+
     logging_dir = data_io.base + 'predictions/%s/%s/' % (RUN_TYPE, CLASSNAME)
     train_helpers.force_make_dir(logging_dir)
     sys.stdout = ui.Logger(logging_dir + 'log.txt')
@@ -141,12 +151,12 @@ def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
 
     # loading training data...
     train_X, train_y = data_io.load_large_data(
-        SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=1000000)
+        SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=10000000)
 
-    train_and_test(train_X, test_X, train_y, test_y, test_files,
+    train_and_test(train_X, test_X, train_y, test_y, test_files + train_files,
             logging_dir, CLASSNAME, HWW, DO_AUGMENTATION,
             LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
-            NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE)
+            NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE, NOISY_LOSS=True)
 
 
 if __name__ == '__main__':
@@ -170,19 +180,23 @@ if __name__ == '__main__':
         LEARNING_RATE = 0.0005,
         )
 
-    TRAINING_DATA = 'large'
+    TRAINING_DATA = 'golden'
+
+    print "Training data: ", TRAINING_DATA
+    for key, val in params.iteritems():
+        print "   ", key.ljust(20), val
 
     if TRAINING_DATA == 'golden':
         train_golden_all_folds(
-            RUN_TYPE = 'mel32_train_golden',
+            RUN_TYPE = 'mel32_train_golden_6',
             CLASSNAME = 'biotic',
             **params
             )
     else:
-        params['NUM_FILTERS'] *= 2
-        params['NUM_DENSE_UNITS'] *= 2
+        params['NUM_FILTERS'] *= 4
+        params['NUM_DENSE_UNITS'] *= 4
         train_large_test_golden(
-            RUN_TYPE = 'mel32_train_large',
-            CLASSNAME = 'biotic',
+            RUN_TYPE = 'mel32_train_large_noisy_loss',
+            CLASSNAME = 'anthrop',
             **params
             )
