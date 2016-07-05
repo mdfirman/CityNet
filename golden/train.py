@@ -39,6 +39,11 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
 
     save_history = train_helpers.SaveHistory(logging_dir)
 
+    def print_ab(net, history):
+        print "A, B = ",
+        print net.layers_['log1plus1'].off.get_value(),
+        print net.layers_['log1plus1'].mult.get_value()
+
     if NOISY_LOSS:
         objective_loss_function = train_helpers.noisy_loss_objective
     else:
@@ -58,6 +63,8 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
         objective_loss_function=objective_loss_function,
         check_input=False
     )
+    net.initialize()
+    print net.layers_.keys()
     net.fit(None, None)
 
     results_savedir = train_helpers.force_make_dir(logging_dir + 'results/')
@@ -113,7 +120,7 @@ def train_golden_all_folds(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
 
     print CLASSNAME, RUN_TYPE
 
-    for test_fold in [0, 1, 2, 3, 4, 5]:
+    for test_fold in [0, 1, 2]:
 
         logging_dir = data_io.base + 'predictions/%s/%s/' % (RUN_TYPE, CLASSNAME)
         train_helpers.force_make_dir(logging_dir)
@@ -156,7 +163,7 @@ def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
     train_and_test(train_X, test_X, train_y, test_y, test_files + train_files,
             logging_dir, CLASSNAME, HWW, DO_AUGMENTATION,
             LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
-            NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE, NOISY_LOSS=True)
+            NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE, NOISY_LOSS=False)
 
 
 if __name__ == '__main__':
@@ -164,8 +171,8 @@ if __name__ == '__main__':
         SPEC_TYPE = 'mel',
 
         # data preprocessing options
-        A = 0.001,
-        B = 10.0,
+        A = 0.018,
+        B = 10.04,
         HWW = 5,
         LEARN_LOG = 0,
         DO_AUGMENTATION = 1,
@@ -176,7 +183,7 @@ if __name__ == '__main__':
         NUM_DENSE_UNITS = 128,
         CONV_FILTER_WIDTH = 4,
         WIGGLE_ROOM = 5,
-        MAX_EPOCHS = 50,
+        MAX_EPOCHS = 20,
         LEARNING_RATE = 0.0005,
         )
 
@@ -188,7 +195,7 @@ if __name__ == '__main__':
 
     if TRAINING_DATA == 'golden':
         train_golden_all_folds(
-            RUN_TYPE = 'mel32_train_golden_6',
+            RUN_TYPE = 'mel32_train_golden_new',
             CLASSNAME = 'biotic',
             **params
             )
@@ -196,7 +203,7 @@ if __name__ == '__main__':
         params['NUM_FILTERS'] *= 4
         params['NUM_DENSE_UNITS'] *= 4
         train_large_test_golden(
-            RUN_TYPE = 'mel32_train_large_noisy_loss',
+            RUN_TYPE = 'mel32_train_large_new',
             CLASSNAME = 'anthrop',
             **params
             )

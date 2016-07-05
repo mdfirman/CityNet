@@ -16,7 +16,7 @@ def force_make_dir(dirpath):
 
 
 # run_type = 'mel32_train_large_hard_bootstrap'
-run_type = 'mel32_train_large'#_noisy_loss'
+run_type = 'mel32_train_golden_new'#_noisy_loss'
 classname = 'biotic'
 SPEC_TYPE = 'mel'  # only for visualisation
 VOLUME_BOOST = 5  # for saving wav files
