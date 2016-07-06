@@ -19,11 +19,15 @@ from ml_helpers.evaluation import plot_confusion_matrix
 def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
         CLASSNAME, HWW, DO_AUGMENTATION, LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM,
         CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS,
-        LEARNING_RATE, NOISY_LOSS, TEST_FOLD=99):
+        LEARNING_RATE, NOISY_LOSS, TEST_FOLD=99, val_X=None, val_y=None):
     '''
     Doesn't do any data loading - assumes the train and test data are passed
     in as parameters!
     '''
+    if val_X is None:
+        val_X = test_X
+        val_y = test_y
+
     # # creaging samplers and batch iterators
     train_sampler = SpecSampler(64, HWW, DO_AUGMENTATION, LEARN_LOG, randomise=True)
     test_sampler = SpecSampler(64, HWW, False, LEARN_LOG, randomise=True, seed=10)
@@ -31,7 +35,7 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
     class MyTrainSplit(nolearn.lasagne.TrainSplit):
         # custom data split
         def __call__(self, Xb, Yb, net):
-            return train_X, test_X, train_y, test_y
+            return train_X, val_X, train_y, val_y
 
     height = train_X[0].shape[0]
     net = train_helpers.create_net(height, HWW, LEARN_LOG, NUM_FILTERS,
@@ -181,19 +185,26 @@ def train_large_splits(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
 
         # split is defined on the large dataset
         train_files, test_files = data_io.load_splits(test_fold=test_fold, large_data=True)
-
-        test_X, test_y = data_io.load_data(
-            test_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, is_golden=False)
         train_X, train_y = data_io.load_data(
             train_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, is_golden=False)
-        test_X = test_X[:1000]
-        test_y = test_y[:1000]
+
+        # validate on golden files not in the training set
+        golden_A_files, golden_B_files = data_io.load_splits(0)
+        golden_files = golden_A_files + golden_B_files
+        golden_val_files = [xx for xx in golden_files if xx not in train_files]
+        val_X, val_y = data_io.load_data(
+            golden_val_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
+        print "Validation size: ", len(val_X), len(val_y)
+
+        # actual test files are all of the files
+        test_X, test_y = data_io.load_data(
+            test_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, is_golden=False)
 
         train_and_test(train_X, test_X, train_y, test_y, test_files,
                 logging_dir, CLASSNAME, HWW, DO_AUGMENTATION,
                 LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
                 NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE,
-                test_fold)
+                test_fold, val_X=val_X, val_y=val_y)
 
 
 if __name__ == '__main__':
@@ -211,10 +222,10 @@ if __name__ == '__main__':
         NUM_DENSE_UNITS = 128,
         CONV_FILTER_WIDTH = 4,
         WIGGLE_ROOM = 5,
-        MAX_EPOCHS = 50,
+        MAX_EPOCHS = 30,
         LEARNING_RATE = 0.0005,
 
-        CLASSNAME = 'biotic'
+        CLASSNAME = 'anthrop'
         )
     params['B'] = 10.0 if params['CLASSNAME'] == 'biotic' else 1.00
     params['A'] = 0.001 if params['CLASSNAME'] == 'biotic' else 0.01
