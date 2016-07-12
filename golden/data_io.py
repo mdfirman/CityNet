@@ -37,6 +37,7 @@ def load_data_helper(fname, SPEC_TYPE, LEARN_LOG, A, B, is_golden=True):
 
     # load spectrogram and annotations
     spec = pickle.load(open(_specs_dir + SPEC_TYPE + '/' + fname))
+    print _annotations_dir + fname
     annots, wav, sample_rate = pickle.load(open(_annotations_dir + fname))
 
     # reshape annotations

@@ -2,6 +2,8 @@
 import matplotlib.pyplot as plt
 
 import sys
+class_to_use = sys.argv[1]
+
 import cPickle as pickle
 import numpy as np
 
@@ -136,6 +138,12 @@ def train_golden_all_folds(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
         train_X, train_y = data_io.load_data(train_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
         test_X, test_y = data_io.load_data(test_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
 
+        for yy in train_y:
+            print yy.mean(),
+        for yy in test_y:
+            print yy.mean(),
+        sds
+
         train_and_test(train_X, test_X, train_y, test_y, test_files,
                 logging_dir, CLASSNAME, HWW, DO_AUGMENTATION,
                 LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
@@ -225,10 +233,10 @@ if __name__ == '__main__':
         MAX_EPOCHS = 30,
         LEARNING_RATE = 0.0005,
 
-        CLASSNAME = 'anthrop'
+        CLASSNAME = class_to_use
         )
-    params['B'] = 10.0 if params['CLASSNAME'] == 'biotic' else 1.00
-    params['A'] = 0.001 if params['CLASSNAME'] == 'biotic' else 0.01
+    params['B'] = 10.0 if params['CLASSNAME'] == 'biotic' else 2.00
+    params['A'] = 0.001 if params['CLASSNAME'] == 'biotic' else 0.025
 
     TRAINING_DATA = 'large'
 

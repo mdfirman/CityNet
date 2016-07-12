@@ -16,8 +16,8 @@ def force_make_dir(dirpath):
 
 
 # run_type = 'mel32_train_large_hard_bootstrap'
-run_type = 'mel32_train_golden_new'#_noisy_loss'
-classname = 'biotic'
+run_type = 'mel32_large_splits'#_noisy_loss'
+classname = 'anthrop'
 SPEC_TYPE = 'mel'  # only for visualisation
 VOLUME_BOOST = 5  # for saving wav files
 
@@ -43,6 +43,7 @@ all_y_pred = []
 sums_pred_hard = []
 sums_pred_soft = []
 sums_gt = []
+fnames = []
 
 for fname in os.listdir(results_dir):
     y_true, y_pred_proba = pickle.load(open(results_dir + fname))
@@ -61,13 +62,14 @@ for fname in os.listdir(results_dir):
     sums_gt.append(y_true.sum() * slice_size)
     sums_pred_hard.append(y_pred_class.sum() * slice_size)
     sums_pred_soft.append(y_pred_proba[:, 1].sum() * slice_size)
+    fnames.append(fname.replace('.pkl', ''))
 
 
 for key in ['tp', 'tn', 'fp', 'fn']:
     total[key] *= slice_size
     print key.ljust(5), '%0.2f' % total[key]
 
-print "Unbalanced accuracy:"
+print "\nUnbalanced accuracy:"
 print float(total['tp'] + total['tn']) / sum(total[key] for key in ['tp', 'tn', 'fp', 'fn'])
 
 print "Balanced accuracy:"
@@ -75,12 +77,21 @@ A = float(total['tp']) / sum(total[key] for key in ['tp', 'fn'])
 B = float(total['tn']) / sum(total[key] for key in ['fp', 'tn'])
 print (A + B) / 2.0
 
+
+##############################################################################
+# SAVING CSV SUMMARY
+##############################################################################
+import pandas as pd
+res = pd.DataFrame(zip(fnames, sums_gt, sums_pred_hard),
+                   columns=['Filename', 'Ground truth', 'Prediction (hard)'])
+res.to_csv(savedir + 'per_file_summary_%s.csv' % classname, index=False)
+
 ##############################################################################
 # PLOTTING CONFUSION MATRIX
 ##############################################################################
 from sklearn.metrics import confusion_matrix
 
-print "\n\nPlotting conf matrix:"
+print "\nPlotting conf matrix:"
 all_y_true = np.hstack(all_y_true)
 all_y_pred = np.hstack(all_y_pred)
 cm = (confusion_matrix(all_y_true, all_y_pred) * slice_size).astype(int)[::-1]
@@ -119,11 +130,20 @@ plt.savefig(savedir + 'overall_success.pdf')
 plt.savefig(savedir + 'overall_success.png', dpi=800)
 plt.close()
 
+from sklearn.metrics import *
+print "\nResults Hard:"
+for cc in [mean_absolute_error, mean_squared_error, median_absolute_error, r2_score]:
+    print cc(sums_gt, sums_pred_hard)
+
+print "\nResults Soft"
+for cc in [mean_absolute_error, mean_squared_error, median_absolute_error, r2_score]:
+    print cc(sums_gt, sums_pred_soft)
+
 
 ##############################################################################
 # PLOTTING RESULTS SPECTROGRAMS
 ##############################################################################
-print "Plotting results spectrograms"
+print "\nPlotting results spectrograms"
 
 for fname in os.listdir(results_dir):
 
