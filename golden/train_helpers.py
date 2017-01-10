@@ -19,11 +19,19 @@ import theano
 from lasagne.layers import batch_norm, ElemwiseSumLayer, ExpressionLayer, DimshuffleLayer
 import lasagne.layers
 
+# Which parameters are used in the network generation?
+net_params = ['DO_BATCH_NORM', 'NUM_FILTERS', 'NUM_DENSE_UNITS',
+              'CONV_FILTER_WIDTH', 'WIGGLE_ROOM', 'HWW', 'LEARN_LOG', 'SPEC_HEIGHT']
+
 
 def force_make_dir(dirpath):
     if not os.path.exists(dirpath):
         os.makedirs(dirpath)
     return dirpath
+
+
+def floatX(X):
+    return np.float32(X)
 
 
 class Log1Plus(lasagne.layers.Layer):
@@ -34,7 +42,10 @@ class Log1Plus(lasagne.layers.Layer):
         self.mult = self.add_param(mult, shape=(num_channels,), name='mult')
 
     def get_output_for(self, input, **kwargs):
-        return T.log(self.off.dimshuffle('x', 0, 'x', 'x') + self.mult.dimshuffle('x', 0, 'x', 'x') * input)
+        off = T.exp(self.off.dimshuffle('x', 0, 'x', 'x'))
+        mult = T.exp(self.mult.dimshuffle('x', 0, 'x', 'x')) * 0.0 + 1.0
+        to_log = T.clip(off + mult * input, floatX(0.000001), floatX(100000))
+        return T.log(to_log)
 
     def get_output_shape_for(self, input_shape):
         return input_shape

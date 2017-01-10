@@ -16,8 +16,8 @@ def force_make_dir(dirpath):
 
 
 # run_type = 'mel32_train_large_hard_bootstrap'
-run_type = 'mel32_large_splits'#_noisy_loss'
-classname = 'anthrop'
+run_type = 'mel32_large_test_golden'#_noisy_loss'
+classname = 'biotic'
 SPEC_TYPE = 'mel'  # only for visualisation
 VOLUME_BOOST = 5  # for saving wav files
 
@@ -128,6 +128,17 @@ leg.get_frame().set_linewidth(1.0)
 plt.title('Per-file predictions for %s sound' % classname)
 plt.savefig(savedir + 'overall_success.pdf')
 plt.savefig(savedir + 'overall_success.png', dpi=800)
+plt.close()
+
+plt.figure(figsize=(5, 5))
+plt.plot(sums_gt, sums_pred_hard, 'ob', markersize=3)
+plt.plot([0, 60], [0, 60],':')
+plt.gca().set_aspect('equal')
+plt.xlabel('Ground truth biotic sound (s)', fontsize=15)
+plt.ylabel('Predicted biotic sound (s)', fontsize=15)
+plt.title('Per-file predictions for %s sound' % classname)
+plt.savefig(savedir + 'overall_success_hard_only.pdf')
+plt.savefig(savedir + 'overall_success_hard_only.png', dpi=1500)
 plt.close()
 
 from sklearn.metrics import *
