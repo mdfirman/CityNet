@@ -1,12 +1,10 @@
 import numpy as np
 import os
 import yaml
-import cPickle as pickle
 import lasagne
 import theano.tensor as T
 import nolearn.lasagne
 from ml_helpers import minibatch_generators as mbg
-import matplotlib.pyplot as plt
 
 from lasagne.layers import InputLayer, DimshuffleLayer
 from lasagne.layers import DenseLayer
