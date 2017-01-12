@@ -35,12 +35,12 @@ def compute_features(_spec, annot):
     just_biotic_unnormed = _spec[:, annot > 0.5]
 
     if just_biotic_normed.size == 0:
-        return np.zeros(161)
+        return np.zeros(33)
     X = []
-    X.append(just_biotic_normed.mean(1))
-    X.append(just_biotic_normed.std(1))
-    X.append(just_biotic_unnormed.mean(1))
-    X.append(just_biotic_unnormed.std(1))
+    # X.append(just_biotic_normed.mean(1))
+    # X.append(just_biotic_normed.std(1))
+    # X.append(just_biotic_unnormed.mean(1))
+    # X.append(just_biotic_unnormed.std(1))
     X.append(just_biotic_unnormed.shape[1])
     X.append(ACI_inspired_features(just_biotic_unnormed))
     tmp = np.hstack(X)

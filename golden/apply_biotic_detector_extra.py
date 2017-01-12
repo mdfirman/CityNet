@@ -45,3 +45,23 @@ for filename in filenames:
         # If required, we'll save the spectrogram to the cache file
         if save_to_cache:
             pickle.dump(specs[filename], open(cache_filename, 'w'), -1)
+
+
+
+# temp - missing files
+import pandas as pd
+
+import data_io
+richness = pd.read_csv(
+    data_io.large_base + '../diversity_labelled_data/resultAndSiteFiles/6SitesWith90Minutes.csv')
+richness_files = set(xx.split('.')[0] for xx in richness.File)
+
+import os
+div_wav_files = os.listdir('/media/michael/Engage/data/audio/alison_data/diversity_labelled_data/')
+div_wav_files = [xx.split('.')[0] for xx in div_wav_files]
+missing = set(richness_files) - set(div_wav_files)
+missing = [xx + '.wav' for xx in missing]
+
+
+filenames = missing
+wav_dir = '/media/michael/Engage/data/audio/alison_data/large_dataset/wavs/'
