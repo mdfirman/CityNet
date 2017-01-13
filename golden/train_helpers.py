@@ -18,7 +18,11 @@ except:
     from lasagne.layers import Pool2DLayer as PoolLayer
 from lasagne.nonlinearities import softmax, very_leaky_rectify as vlr
 import theano
-from lasagne.layers import batch_norm, ElemwiseSumLayer, ExpressionLayer, DimshuffleLayer
+try:
+    from lasagne.layers import batch_norm
+except:
+    from normalization import batch_norm
+from lasagne.layers import ElemwiseSumLayer, ExpressionLayer, DimshuffleLayer
 import lasagne.layers
 
 # Which parameters are used in the network generation?
