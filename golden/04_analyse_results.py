@@ -82,8 +82,8 @@ print (A + B) / 2.0
 # SAVING CSV SUMMARY
 ##############################################################################
 import pandas as pd
-res = pd.DataFrame(zip(fnames, sums_gt, sums_pred_hard),
-                   columns=['Filename', 'Ground truth', 'Prediction (hard)'])
+res = pd.DataFrame(zip(fnames, sums_gt, sums_pred_hard, sums_pred_soft),
+                   columns=['Filename', 'Ground truth', 'Prediction (hard)', 'Prediction (soft)'])
 res.to_csv(savedir + 'per_file_summary_%s.csv' % classname, index=False)
 
 ##############################################################################
