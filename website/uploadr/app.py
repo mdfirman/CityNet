@@ -1,8 +1,10 @@
-from flask import Flask, request, redirect, url_for, render_template
+from flask import Flask, request, redirect, url_for, render_template, flash
 import os
 import json
 import glob
 from uuid import uuid4
+from classifier import Classifier
+clfr = Classifier()
 
 app = Flask(__name__)
 
@@ -22,8 +24,8 @@ def upload():
 
     # Is the upload using Ajax, or a direct POST by the form?
     is_ajax = False
-    if form.get("__ajax", None) == "true":
-        is_ajax = True
+    # if form.get("__ajax", None) == "true":
+    #     is_ajax = True
 
     # Target folder for these uploads.
     target = "uploadr/static/uploads/{}".format(upload_key)
@@ -41,10 +43,22 @@ def upload():
 
     for upload in request.files.getlist("file"):
         filename = upload.filename.rsplit("/")[0]
-        destination = "/".join([target, filename])
-        print "Accept incoming file:", filename
-        print "Save it to:", destination
-        upload.save(destination)
+
+        if filename.endswith('.wav'):
+            destination = "/".join([target, filename])
+        else:
+            if is_ajax:
+                return ajax_response(
+                    False, "Please upload .wav files only")
+            else:
+                flash("Please upload .wav files only")
+                print "Not"
+                return redirect(url_for("upload"))
+
+        # I guess here we do the classification...
+        print "DOING classification now"
+        classification = clfr.load_and_classify(destination)
+        print classification.shape
 
     if is_ajax:
         return ajax_response(True, upload_key)

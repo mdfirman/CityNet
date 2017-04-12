@@ -21,8 +21,8 @@ if __name__ == '__main__':
         host='0.0.0.0',
         debug=True,
         port=args.port,
-        threaded=True,
+        threaded=True
     )
+    app.secret_key ='supersecret'
 
     app.run(**flask_options)
-
