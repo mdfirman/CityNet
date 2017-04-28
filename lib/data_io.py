@@ -74,6 +74,7 @@ def load_large_data(SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=np.iinfo(
     # loading the test data filenames - should avoid using these
     splits = yaml.load(open(base + 'splits/folds.yaml'))
     test_files = set([f for split in splits for f in split])
+    test_postcodes = set([xx.split('-')[0].split('_')[0] for xx in test_files])
 
     # load data and make list of specsamplers
     X = []
@@ -83,7 +84,7 @@ def load_large_data(SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=np.iinfo(
     fnames = os.listdir(large_annotation_pkl_dir)
     for fname in fnames[:max_to_load]:
 
-        if fname in test_files:
+        if fname.split('-')[0].split('_')[0] in test_postcodes:
             num_dropped += 1
             continue
 

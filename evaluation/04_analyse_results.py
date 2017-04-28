@@ -8,6 +8,7 @@ import sys
 import cPickle as pickle
 import numpy as np
 import seaborn as sns
+import sklearn
 
 def force_make_dir(dirpath):
     if not os.path.exists(dirpath):
@@ -40,6 +41,7 @@ print "\n\nResults across all files:"
 total = dict.fromkeys(['tm', 'tp', 'tn', 'fp', 'fn'], 0)
 all_y_true = []
 all_y_pred = []
+all_y_soft = []
 sums_pred_hard = []
 sums_pred_soft = []
 sums_gt = []
@@ -57,6 +59,7 @@ for fname in os.listdir(results_dir):
 
     all_y_true.append(y_true)
     all_y_pred.append(y_pred_class)
+    all_y_soft.append(y_pred_proba[:, 1])
 
     slice_size = 60.0 / y_true.shape[0]
     sums_gt.append(y_true.sum() * slice_size)
@@ -76,6 +79,35 @@ print "Balanced accuracy:"
 A = float(total['tp']) / sum(total[key] for key in ['tp', 'fn'])
 B = float(total['tn']) / sum(total[key] for key in ['fp', 'tn'])
 print (A + B) / 2.0
+
+
+##############################################################################
+# COMPUTING PR CURVE
+##############################################################################
+from sklearn.metrics import precision_recall_curve
+all_y_true_stacked = np.hstack(all_y_true)
+all_y_soft_stacked = np.hstack(all_y_soft)
+prec, recall, thresholds = precision_recall_curve(
+    all_y_true_stacked, all_y_soft_stacked)
+
+# finding the P/R at threshold=0.5
+prec_at_05 = total['tp'] / float(total['tp'] + total['fp'])
+recall_at_05 = total['tp'] / float(total['tp'] + total['fn'])
+print prec_at_05, recall_at_05
+
+with open(savedir + 'pr_results.pkl', 'w') as f:
+    pickle.dump((prec, recall, thresholds, prec_at_05, recall_at_05), f, -1)
+    
+# Plotting PR curve
+plt.plot(prec, recall)
+plt.plot(prec_at_05, recall_at_05, 'ob', ms=6)
+plt.xlim(0, 1.05)
+plt.ylim(0, 1.05)
+plt.xlabel('Precision')
+plt.ylabel('Recall')
+plt.gca().set_aspect('equal', adjustable='box')
+plt.draw()
+plt.savefig(savedir + 'pr_curve.pdf')
 
 
 ##############################################################################
@@ -160,6 +192,9 @@ for fname in os.listdir(results_dir):
 
     y_true, y_pred_proba = pickle.load(open(results_dir + fname))
     spec = pickle.load(open(spec_pkl_dir + SPEC_TYPE + '/' + fname))
+    
+    print 60.0 / float(spec.shape[1])
+    sds
 
     scale = 30
     spec_bin_width_in_s = 60 / float(spec.shape[1])

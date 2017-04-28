@@ -11,6 +11,7 @@ import nolearn
 import nolearn.lasagne
 import lasagne
 
+sys.path.append('../lib')
 from train_helpers import SpecSampler
 import train_helpers
 import data_io
@@ -64,11 +65,10 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
         batch_iterator_train=train_sampler,
         batch_iterator_test=test_sampler,
         train_split=MyTrainSplit(None),
-        custom_epoch_scores=[('N/A', lambda x, y: 0.0)],
         on_epoch_finished=[save_history],
-        objective_loss_function=objective_loss_function,
-        check_input=False
+        objective_loss_function=objective_loss_function
     )
+    #custom_epoch_scores=[('N/A', lambda x, y: 0.0)],
     net.initialize()
     print net.layers_.keys()
     net.fit(None, None)
@@ -138,12 +138,6 @@ def train_golden_all_folds(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
         train_X, train_y = data_io.load_data(train_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
         test_X, test_y = data_io.load_data(test_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
 
-        for yy in train_y:
-            print yy.mean(),
-        for yy in test_y:
-            print yy.mean(),
-        sds
-
         train_and_test(train_X, test_X, train_y, test_y, test_files,
                 logging_dir, CLASSNAME, HWW, DO_AUGMENTATION,
                 LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
@@ -161,6 +155,10 @@ def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
     logging_dir = data_io.base + 'predictions/%s/%s/' % (RUN_TYPE, CLASSNAME)
     train_helpers.force_make_dir(logging_dir)
     sys.stdout = ui.Logger(logging_dir + 'log.txt')
+    #
+    # train_files_large, test_files_large = data_io.load_splits(
+    #     test_fold=test_fold, large_data=True)
+    # all_train_files = train_files_large + test_files_large
 
     # loading testing data
     # (remember, here we are testing on ALL golden... so it doesn't matter what the test fold is
@@ -249,10 +247,10 @@ if __name__ == '__main__':
             RUN_TYPE = 'mel32_train_golden_new',
             **params
             )
-    else:
+    elif TRAINING_DATA == 'large':
         params['NUM_FILTERS'] *= 4
         params['NUM_DENSE_UNITS'] *= 4
-        train_large_splits(
-            RUN_TYPE = 'mel32_large_splits',
+        train_large_test_golden(
+            RUN_TYPE = 'mel32_large_test_golden_fullsplit',
             **params
-            )
+        )
