@@ -17,7 +17,9 @@ def force_make_dir(dirpath):
 
 
 # run_type = 'mel32_train_large_hard_bootstrap'
-run_type = 'mel32_large_test_golden'#_noisy_loss'
+run_type = 'warblr_challenge_baseline'
+#run_type = 'mel32_large_test_golden_fullsplit' #mel32_large_test_golden_fullsplit'#
+#run_type = 'aci_baseline'
 classname = 'biotic'
 SPEC_TYPE = 'mel'  # only for visualisation
 VOLUME_BOOST = 5  # for saving wav files
@@ -50,6 +52,7 @@ fnames = []
 for fname in os.listdir(results_dir):
     y_true, y_pred_proba = pickle.load(open(results_dir + fname))
     y_pred_class = y_pred_proba[:, 1] > 0.5
+    y_true = y_true > 0.5
 
     total['tm'] += y_true.shape[0]
     total['tp'] += np.logical_and(y_true == y_pred_class, y_true == 1).sum()
@@ -99,8 +102,8 @@ with open(savedir + 'pr_results.pkl', 'w') as f:
     pickle.dump((prec, recall, thresholds, prec_at_05, recall_at_05), f, -1)
     
 # Plotting PR curve
-plt.plot(prec, recall)
-plt.plot(prec_at_05, recall_at_05, 'ob', ms=6)
+plt.plot(recall, prec)
+plt.plot(recall_at_05, prec_at_05, 'ob', ms=6)
 plt.xlim(0, 1.05)
 plt.ylim(0, 1.05)
 plt.xlabel('Precision')
@@ -108,7 +111,6 @@ plt.ylabel('Recall')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.draw()
 plt.savefig(savedir + 'pr_curve.pdf')
-
 
 ##############################################################################
 # SAVING CSV SUMMARY
@@ -126,16 +128,19 @@ from sklearn.metrics import confusion_matrix
 print "\nPlotting conf matrix:"
 all_y_true = np.hstack(all_y_true)
 all_y_pred = np.hstack(all_y_pred)
-cm = (confusion_matrix(all_y_true, all_y_pred) * slice_size).astype(int)[::-1]
-print cm
+cm = (confusion_matrix(all_y_true, all_y_pred) * slice_size).astype(float)
+cm = cm / cm.sum() * 100
+labels = ['True Positive', 'False Positive', 'False Negative', 'True Negative']
+fmt = lambda x: "%s\n\n%2.1f%%" % (labels[x], cm.ravel()[x])
+annots = np.array([fmt(xx) for xx in range(4)]).reshape(2, 2)
 fig = plt.figure(figsize=(4, 4))
-ax = fig.add_axes((0.18,0.1,0.8,0.8))
-ax = sns.heatmap(cm, annot=True, fmt="d", ax=ax)
+ax = fig.add_axes((0.18,0.15,0.8,0.8))
+sns.heatmap(cm, annot=annots, fmt='s', ax=ax, cbar=False) # 
 plt.savefig(savedir + 'confusion_matrix1.pdf')
 ax.grid('off')
 ax.set_aspect(1.0)
 plt.xticks([0.5, 1.5], ['None', classname.capitalize()])
-plt.yticks([0.5, 1.5], ['None', classname.capitalize()])
+plt.yticks([0.5, 1.5], [classname.capitalize(), 'None'])
 plt.tick_params(axis='both', which='major', labelsize=16)
 plt.ylabel('Actual', fontsize=20)
 plt.xlabel('Predicted', fontsize=20)
@@ -192,9 +197,6 @@ for fname in os.listdir(results_dir):
 
     y_true, y_pred_proba = pickle.load(open(results_dir + fname))
     spec = pickle.load(open(spec_pkl_dir + SPEC_TYPE + '/' + fname))
-    
-    print 60.0 / float(spec.shape[1])
-    sds
 
     scale = 30
     spec_bin_width_in_s = 60 / float(spec.shape[1])
