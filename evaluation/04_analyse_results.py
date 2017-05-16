@@ -16,11 +16,8 @@ def force_make_dir(dirpath):
     return dirpath
 
 
-# run_type = 'mel32_train_large_hard_bootstrap'
-run_type = 'warblr_challenge_baseline'
-#run_type = 'mel32_large_test_golden_fullsplit' #mel32_large_test_golden_fullsplit'#
-#run_type = 'aci_baseline'
-classname = 'biotic'
+run_type = sys.argv[1]
+classname = sys.argv[2]
 SPEC_TYPE = 'mel'  # only for visualisation
 VOLUME_BOOST = 5  # for saving wav files
 
@@ -71,6 +68,8 @@ for fname in os.listdir(results_dir):
     fnames.append(fname.replace('.pkl', ''))
 
 
+print "Totals (in slices, not seconds)\n", total
+print "Correct: %d, wrong: %d" % (total['tp'] + total['tn'], total['fp'] + total['fn'])
 for key in ['tp', 'tn', 'fp', 'fn']:
     total[key] *= slice_size
     print key.ljust(5), '%0.2f' % total[key]
@@ -83,24 +82,31 @@ A = float(total['tp']) / sum(total[key] for key in ['tp', 'fn'])
 B = float(total['tn']) / sum(total[key] for key in ['fp', 'tn'])
 print (A + B) / 2.0
 
-
 ##############################################################################
 # COMPUTING PR CURVE
 ##############################################################################
 from sklearn.metrics import precision_recall_curve
 all_y_true_stacked = np.hstack(all_y_true)
 all_y_soft_stacked = np.hstack(all_y_soft)
-prec, recall, thresholds = precision_recall_curve(
-    all_y_true_stacked, all_y_soft_stacked)
+if run_type != 'bulbul' and 'mel32' not in run_type:
+    all_y_soft_stacked -= all_y_soft_stacked.min()
+    all_y_soft_stacked /= all_y_soft_stacked.max()
+prec, recall, thresholds = precision_recall_curve(all_y_true_stacked, all_y_soft_stacked)
 
 # finding the P/R at threshold=0.5
-prec_at_05 = total['tp'] / float(total['tp'] + total['fp'])
-recall_at_05 = total['tp'] / float(total['tp'] + total['fn'])
+_true, _pred = all_y_true_stacked, all_y_soft_stacked > 0.5
+totals = {}
+totals['tp'] = np.logical_and(_true == _pred, _true == 1).sum()
+totals['tn'] = np.logical_and(_true == _pred, _true == 0).sum()
+totals['fp'] = np.logical_and(_true != _pred, _true == 0).sum()
+totals['fn'] = np.logical_and(_true != _pred, _true == 1).sum()
+prec_at_05 = totals['tp'] / float(totals['tp'] + totals['fp'])
+recall_at_05 = totals['tp'] / float(totals['tp'] + totals['fn'])
 print prec_at_05, recall_at_05
 
 with open(savedir + 'pr_results.pkl', 'w') as f:
     pickle.dump((prec, recall, thresholds, prec_at_05, recall_at_05), f, -1)
-    
+
 # Plotting PR curve
 plt.plot(recall, prec)
 plt.plot(recall_at_05, prec_at_05, 'ob', ms=6)
@@ -135,7 +141,7 @@ fmt = lambda x: "%s\n\n%2.1f%%" % (labels[x], cm.ravel()[x])
 annots = np.array([fmt(xx) for xx in range(4)]).reshape(2, 2)
 fig = plt.figure(figsize=(4, 4))
 ax = fig.add_axes((0.18,0.15,0.8,0.8))
-sns.heatmap(cm, annot=annots, fmt='s', ax=ax, cbar=False) # 
+sns.heatmap(cm, annot=annots, fmt='s', ax=ax, cbar=False) #
 plt.savefig(savedir + 'confusion_matrix1.pdf')
 ax.grid('off')
 ax.set_aspect(1.0)
@@ -147,7 +153,6 @@ plt.xlabel('Predicted', fontsize=20)
 plt.savefig(savedir + 'confusion_matrix.pdf')
 plt.savefig(savedir + 'confusion_matrix.png', dpi=800)
 plt.close()
-
 
 ##############################################################################
 # PLOT PER-FILE SCATTER PLOT
