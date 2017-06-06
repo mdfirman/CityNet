@@ -1,5 +1,5 @@
-function initMap() {
-  var uluru = {lat: 51.5293, lng: -0.0586};
+window.onload = function initMap() {
+  var uluru = {lat: 51.529517, lng: -0.058284};
   var styledMapType = new google.maps.StyledMapType(
     [
       {
@@ -318,11 +318,13 @@ function initMap() {
     }
   });
   var map_inset = new google.maps.Map(document.getElementById('map_inset'), {
-    center: {lat: 36.964, lng: -122.015},
+    center: uluru,
     zoom: 18,
-    mapTypeId: 'satellite'
+    mapTypeId: 'satellite',
+    disableDefaultUI: true,
+    scrollwheel: false,
+    draggable: false
   });
-  map_inset.setTilt(45);
 
   //Associate the styled map with the MapTypeId and set it to display.
   map.mapTypes.set('styled_map', styledMapType);
@@ -342,4 +344,15 @@ function initMap() {
     map.setCenter(marker.getPosition());
     $('#myModal').modal('show');
   });
+
+  // Resize map to show on a Bootstrap's modal
+  $('#myModal').on('shown.bs.modal', function() {
+    var currentCenter = map_inset.getCenter();  // Get current center before resizing
+    google.maps.event.trigger(map_inset, "resize");
+    // console.log(uluru)
+    map_inset.setCenter(currentCenter); // Re-set previous center
+    map_inset.setTilt(45);
+  });
+
+
 }
