@@ -311,7 +311,7 @@ window.onload = function initMap() {
     ]
     , {name: 'Map'});
   var map = new google.maps.Map(document.getElementById('map'), {
-    zoom: 12,
+    zoom: 10,
     center: uluru,
     mapTypeControlOptions: {
       mapTypeIds: ['satellite', 'styled_map']
@@ -330,6 +330,7 @@ window.onload = function initMap() {
   map.mapTypes.set('styled_map', styledMapType);
   map.setMapTypeId('styled_map');
 
+  // Following blocks add the marker for the bethanl green site
   var marker = new google.maps.Marker({
     position: uluru,
     map: map,
@@ -340,10 +341,56 @@ window.onload = function initMap() {
   });
 
   marker.addListener('click', function() {
-    map.setZoom(12);
-    map.setCenter(marker.getPosition());
+    // map.setZoom(12);
+    // map.setCenter(marker.getPosition());
     $('#myModal').modal('show');
   });
+
+  google.maps.event.addListener(marker, 'mouseover', function() {
+    this.setIcon({
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 8
+    });
+  });
+  google.maps.event.addListener(marker, 'mouseout', function() {
+    this.setIcon({
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 5
+    });
+  });
+
+  // add a load of random markers
+  for (i=0; i < 50; i++)
+  {
+    var marker = new google.maps.Marker({
+      position: {lat: 51.277 + Math.random() * 0.35, lng: -0.4593 + Math.random() * 0.8},
+      // 51.529517, lng: -0.058284};
+      map: map,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 5
+      },
+    });
+
+    google.maps.event.addListener(marker, 'mouseover', function() {
+      this.setIcon({
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 8
+      });
+    });
+    google.maps.event.addListener(marker, 'mouseout', function() {
+      this.setIcon({
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 5
+      });
+    });
+    //
+    // marker.addListener('click', function() {
+    //   map.setZoom(12);
+    //   map.setCenter(marker.getPosition());
+    //   $('#myModal').modal('show');
+    // });
+  }
 
   // Resize map to show on a Bootstrap's modal
   $('#myModal').on('shown.bs.modal', function() {
@@ -351,8 +398,8 @@ window.onload = function initMap() {
     google.maps.event.trigger(map_inset, "resize");
     // console.log(uluru)
     map_inset.setCenter(currentCenter); // Re-set previous center
-    map_inset.setTilt(45);
   });
+
 
 
 }
