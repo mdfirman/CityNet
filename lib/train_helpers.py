@@ -36,27 +36,6 @@ def force_make_dir(dirpath):
     return dirpath
 
 
-def floatX(X):
-    return np.float32(X)
-
-
-class Log1Plus(lasagne.layers.Layer):
-    def __init__(self, incoming, off=lasagne.init.Constant(1.0), mult=lasagne.init.Constant(1.0), **kwargs):
-        super(Log1Plus, self).__init__(incoming, **kwargs)
-        num_channels = self.input_shape[1]
-        self.off = self.add_param(off, shape=(num_channels,), name='off')
-        self.mult = self.add_param(mult, shape=(num_channels,), name='mult')
-
-    def get_output_for(self, input, **kwargs):
-        off = T.exp(self.off.dimshuffle('x', 0, 'x', 'x'))
-        mult = T.exp(self.mult.dimshuffle('x', 0, 'x', 'x')) * 0.0 + 1.0
-        to_log = T.clip(off + mult * input, floatX(0.000001), floatX(100000))
-        return T.log(to_log)
-
-    def get_output_shape_for(self, input_shape):
-        return input_shape
-
-
 class SpecSampler(object):
 
     def __init__(self, batch_size, hww, do_aug, learn_log, randomise=False,
@@ -84,9 +63,9 @@ class SpecSampler(object):
         which_spec = [ii * np.ones(xx.shape[1]) for ii, xx in enumerate(X)]
         self.which_spec = np.hstack([blank_label] + which_spec + [blank_label]).astype(np.int32)
 
-        self.medians = np.zeros((len(X), X[0].shape[0], self.hww*2))
+        self.medians = np.zeros((len(X), X[0].shape[0]))
         for idx, spec in enumerate(X):
-            self.medians[idx] = np.median(spec, axis=1, keepdims=True)
+            self.medians[idx] = np.median(spec, axis=1)
 
         assert self.labels.shape[0] == self.specs.shape[2]
         return self
@@ -111,7 +90,7 @@ class SpecSampler(object):
             X = np.zeros((bs, channels, height, self.hww*2), np.float32)
             y = np.zeros(bs) * np.nan
             if self.learn_log:
-                X_medians = np.zeros((bs, channels, height, self.hww*2), np.float32)
+                X_medians = np.zeros((bs, channels, height), np.float32)
             count = 0
 
             for loc in sampled_locs:
@@ -183,49 +162,69 @@ class SaveHistory(HelpersBaseClass):
         yaml.dump([history[-1]], open(self.savepath, 'a'), default_flow_style=False)
 
 
-class SaveWeights(HelpersBaseClass):
-    subdir = "/weights/"
+class NormalisationLayer(lasagne.layers.MergeLayer):
+    def __init__(self, incomings, **kwargs):
+        super(NormalisationLayer, self).__init__(incomings, **kwargs)
+        # no parameters to define
 
-    def __init__(self, logging_dir, save_weights_every, new_file_every):
-        super(SaveWeights, self).__init__(logging_dir)
-        self.save_weights_every = save_weights_every
-        self.new_file_every = new_file_every
+    def get_output_for(self, input, **kwargs):
 
-    def __call__(self, net, history):
-        '''
-        Dumps weights to disk. Saves weights every epoch, but only starts a
-        new file every X epochs.
-        '''
-        if (len(history) - 1) % self.save_weights_every == 0:
-            filenum = (len(history) - 1) / self.new_file_every
-            savepath = self.savedir + "weights_%06d.pkl" % filenum
-            net.save_params_to(savepath)
+        x, medians = input
+        # Subtracting logged median from each channel
+        x = x - medians
+
+        flattened = x.flatten(3)  # BxCxHxW --> BxCxHW
+
+        # Rescaling each channel to be between 0 and 1
+        A = flattened / (flattened.max(2, keepdims=True) + 0.000001)
+        A = A.reshape(x.shape)
+
+        B = x# - medians
+
+        # Whitening each spectrogram
+        C = flattened - flattened.mean(2, keepdims=True)
+        C = C / (C.std(2, keepdims=True) + 0.0000001)
+        C = C.reshape(x.shape)
+
+        # Whitening each row of each spectrogram
+        D = x - x.mean(3, keepdims=True)
+        D = D / (D.std(3, keepdims=True) + 0.0000001)
+
+        return T.concatenate((A, B, C, D), axis=1)
+
+    def get_output_shape_for(self, input_shapes):
+        input_shape = input_shapes[0]
+        return (input_shape[0], 4*input_shape[1], input_shape[2], input_shape[3])
 
 
-class EarlyStopping(object):
-    # https://github.com/dnouri/nolearn/issues/18
-    def __init__(self, patience=100):
-        self.patience = patience
-        self.best_valid = 0#np.inf
-        self.best_valid_epoch = 0
-        self.best_weights = None
+class LearnLogLayer(lasagne.layers.Layer):
+    """Learn the parameters of a logarithm log(Ax + B), repeated multiple times...
 
-    def __call__(self, nn, train_history):
-        current_valid = train_history[-1]['valid_accuracy']
-        current_epoch = train_history[-1]['epoch']
-        if current_valid > self.best_valid:
-            self.best_valid = current_valid
-            self.best_valid_epoch = current_epoch
-            self.best_weights = nn.get_all_params_values()  # updated
-        elif self.best_valid_epoch + self.patience < current_epoch:
-            if nn.verbose:
-                print("Early stopping.")
-                print("Best valid loss was {:.6f} at epoch {}.".format(
-                    self.best_valid, self.best_valid_epoch))
-            nn.load_params_from(self.best_weights)
-            if nn.verbose:
-                print("Weights set.")
-            raise StopIteration()
+    Assumes input is of shape None x 1 x H x W"""
+
+    def __init__(self, incoming, num_repeats, A=lasagne.init.Normal(),
+                 B=lasagne.init.Normal(), **kwargs):
+        super(LearnLogLayer, self).__init__(incoming, **kwargs)
+        self.num_repeats = num_repeats
+        self.A = self.add_param(A, (1, num_repeats, 1, 1), name='A')
+        self.B = self.add_param(B, (1, num_repeats, 1, 1), name='B')
+
+    def get_output_for(self, input, **kwargs):
+        # Using sigmoids to contrain A and B. Could use exp if want
+        # unbounded upper limit. Also, this might be undercontrained
+        # right now.
+        _A = T.nnet.sigmoid(self.A) * 0 + 10.0
+        _B = T.nnet.sigmoid(self.B) * 0 + 0.001
+
+        # big hack to make input broadcastable...
+        input = input[:, 0, :, :][:, None, :, :]
+
+        return T.log(_A + _B * input)
+
+    def get_output_shape_for(self, input_shape):
+        return (input_shape[0], self.num_repeats, input_shape[2], input_shape[3])
+
+
 
 
 def create_net(SPEC_HEIGHT, HWW, LEARN_LOG, NUM_FILTERS,
@@ -243,19 +242,24 @@ def create_net(SPEC_HEIGHT, HWW, LEARN_LOG, NUM_FILTERS,
     net['input'] = InputLayer((None, channels, SPEC_HEIGHT, HWW*2), name='input')
 
     if LEARN_LOG:
-        off = lasagne.init.Constant(0.01)
-        mult = lasagne.init.Constant(1.0)
 
-        net['input_logged'] = Log1Plus(net['input'], off, mult)
+        NUM_LOG_CHANNELS = 1
+        net['input_logged'] = LearnLogLayer(net['input'], NUM_LOG_CHANNELS)
+        _A, _B = net['input_logged'].A, net['input_logged'].B
 
         # logging the median and multiplying by -1
-        net['input_med'] = InputLayer((None, channels, SPEC_HEIGHT, HWW*2), name='input_med')
-        net['med_logged'] = Log1Plus(
-            net['input_med'], off=net['input_logged'].off, mult=net['input_logged'].mult)
-        net['med_logged'] = ExpressionLayer(net['med_logged'], lambda X: -X)
+        net['input_med'] = InputLayer((None, channels, SPEC_HEIGHT), name='input_med')
+        net['input_med'] = DimshuffleLayer(net['input_med'], (0, 1, 2, 'x'))
+        net['med_logged'] = LearnLogLayer(net['input_med'], NUM_LOG_CHANNELS, A=_A, B=_B)
 
-        # summing the logged input with the negative logged median
-        net['input'] = ElemwiseSumLayer((net['input_logged'], net['med_logged']))
+        # net['med_logged'] = ExpressionLayer(net['med_logged'], lambda X: -X)
+        #
+        # # summing the logged input with the negative logged median
+        # net['input'] = ElemwiseSumLayer((net['input_logged'], net['med_logged']))
+        #
+        # performing the multiplications
+        net['input'] = NormalisationLayer((net['input_logged'], net['med_logged']))
+
 
     net['conv1_1'] = batch_norm(
         ConvLayer(net['input'], NUM_FILTERS, (SPEC_HEIGHT - WIGGLE_ROOM, CONV_FILTER_WIDTH), nonlinearity=vlr))
@@ -273,15 +277,3 @@ def create_net(SPEC_HEIGHT, HWW, LEARN_LOG, NUM_FILTERS,
     net['prob'] = NonlinearityLayer(net['fc8'], softmax)
 
     return net
-
-
-def noisy_loss_objective(predictions, targets):
-    # epsilon = np.float32(1.0e-6)
-    one = np.float32(1.0)
-    beta = np.float32(0.75)
-    # pred = T.clip(predictions, epsilon, one - epsilon)
-
-    # assume targets are just indicator values...
-    A = (one - targets) * (beta + (one - beta) * T.round(predictions[:, 0])) * T.log(predictions[:, 0])
-    B = targets * T.log(predictions[:, 1])
-    return - (A + B)
