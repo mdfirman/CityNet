@@ -3,7 +3,6 @@ import os
 import yaml
 import lasagne
 import theano.tensor as T
-import nolearn.lasagne
 from ml_helpers import minibatch_generators as mbg
 
 from lasagne.layers import InputLayer, DimshuffleLayer
@@ -131,35 +130,6 @@ class SpecSampler(object):
 
             else:
                 yield X.astype(np.float32), y.astype(np.int32)
-
-
-class HelpersBaseClass(object):
-    # sub dir is a class attribute so subclasses can override it
-    subdir = ""
-
-    def __init__(self, logging_dir):
-        self.savedir = force_make_dir(logging_dir + self.subdir)
-
-
-class SaveHistory(HelpersBaseClass):
-    def __init__(self, logging_dir):
-        super(SaveHistory, self).__init__(logging_dir)
-        self.savepath = self.savedir + "history.yaml"
-        with open(self.savepath, 'w'):
-            pass
-
-    def __call__(self, net, history):
-        '''
-        Dumps nolearn history to disk, one line at a time
-        '''
-        # handling numpy bool values
-        for key, item in history[-1].iteritems():
-            if type(item) == np.bool_:
-                history[-1][key] = bool(item)
-            elif type(item).__module__ == 'numpy':
-                history[-1][key] = float(item)
-
-        yaml.dump([history[-1]], open(self.savepath, 'a'), default_flow_style=False)
 
 
 class NormalisationLayer(lasagne.layers.MergeLayer):
