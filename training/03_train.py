@@ -22,7 +22,7 @@ from ml_helpers.evaluation import plot_confusion_matrix
 def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
         CLASSNAME, HWW, DO_AUGMENTATION, LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM,
         CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS,
-        LEARNING_RATE, NOISY_LOSS, TEST_FOLD=99, val_X=None, val_y=None):
+        LEARNING_RATE, TEST_FOLD=99, val_X=None, val_y=None):
     '''
     Doesn't do any data loading - assumes the train and test data are passed
     in as parameters!
@@ -51,10 +51,7 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
         print net.layers_['log1plus1'].off.get_value(),
         print net.layers_['log1plus1'].mult.get_value()
 
-    if NOISY_LOSS:
-        objective_loss_function = train_helpers.noisy_loss_objective
-    else:
-        objective_loss_function = lasagne.objectives.categorical_crossentropy
+    objective_loss_function = lasagne.objectives.categorical_crossentropy
 
     net = nolearn.lasagne.NeuralNet(
         layers=net['prob'],
@@ -119,32 +116,6 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
     net.save_params_to(results_savedir + "weights_%d.pkl" % TEST_FOLD)
 
 
-def train_golden_all_folds(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
-        DO_AUGMENTATION,
-        LEARN_LOG, A, B, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
-        NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE):
-
-    print CLASSNAME, RUN_TYPE
-
-    for test_fold in [0, 1, 2]:
-
-        logging_dir = data_io.base + 'predictions/%s/%s/' % (RUN_TYPE, CLASSNAME)
-        train_helpers.force_make_dir(logging_dir)
-        sys.stdout = ui.Logger(logging_dir + 'log.txt')
-
-        # loading data
-        train_files, test_files = data_io.load_splits(test_fold)
-
-        train_X, train_y = data_io.load_data(train_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
-        test_X, test_y = data_io.load_data(test_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
-
-        train_and_test(train_X, test_X, train_y, test_y, test_files,
-                logging_dir, CLASSNAME, HWW, DO_AUGMENTATION,
-                LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
-                NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE,
-                test_fold)
-
-
 def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
         DO_AUGMENTATION,
         LEARN_LOG, A, B, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
@@ -168,49 +139,12 @@ def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
 
     # loading training data...
     train_X, train_y = data_io.load_large_data(
-        SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=10000000)
+        SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=1000000)
 
     train_and_test(train_X, test_X, train_y, test_y, test_files + train_files,
             logging_dir, CLASSNAME, HWW, DO_AUGMENTATION,
             LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
-            NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE, NOISY_LOSS=False)
-
-
-def train_large_splits(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
-        DO_AUGMENTATION,
-        LEARN_LOG, A, B, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
-        NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE):
-
-    print CLASSNAME, RUN_TYPE
-
-    for test_fold in [0, 1, 2]:
-
-        logging_dir = data_io.base + 'predictions/%s/%s/' % (RUN_TYPE, CLASSNAME)
-        train_helpers.force_make_dir(logging_dir)
-        sys.stdout = ui.Logger(logging_dir + 'log.txt')
-
-        # split is defined on the large dataset
-        train_files, test_files = data_io.load_splits(test_fold=test_fold, large_data=True)
-        train_X, train_y = data_io.load_data(
-            train_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, is_golden=False)
-
-        # validate on golden files not in the training set
-        golden_A_files, golden_B_files = data_io.load_splits(0)
-        golden_files = golden_A_files + golden_B_files
-        golden_val_files = [xx for xx in golden_files if xx not in train_files]
-        val_X, val_y = data_io.load_data(
-            golden_val_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
-        print "Validation size: ", len(val_X), len(val_y)
-
-        # actual test files are all of the files
-        test_X, test_y = data_io.load_data(
-            test_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, is_golden=False)
-
-        train_and_test(train_X, test_X, train_y, test_y, test_files,
-                logging_dir, CLASSNAME, HWW, DO_AUGMENTATION,
-                LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
-                NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE,
-                test_fold, val_X=val_X, val_y=val_y)
+            NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE)
 
 
 if __name__ == '__main__':
@@ -242,15 +176,9 @@ if __name__ == '__main__':
     for key, val in params.iteritems():
         print "   ", key.ljust(20), val
 
-    if TRAINING_DATA == 'golden':
-        train_golden_all_folds(
-            RUN_TYPE = 'mel32_train_golden_new',
-            **params
-            )
-    elif TRAINING_DATA == 'large':
-        params['NUM_FILTERS'] *= 4
-        params['NUM_DENSE_UNITS'] *= 4
-        train_large_test_golden(
-            RUN_TYPE = 'mel32_large_test_golden_fullsplit',
-            **params
-        )
+    params['NUM_FILTERS'] *= 4
+    params['NUM_DENSE_UNITS'] *= 4
+    train_large_test_golden(
+        RUN_TYPE = 'mel32_large_test_golden_fixed_normalisation',
+        **params
+    )
