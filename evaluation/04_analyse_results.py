@@ -7,8 +7,9 @@ import os
 import sys
 import cPickle as pickle
 import numpy as np
-import seaborn as sns
+# import seaborn as sns
 import sklearn
+from sklearn.metrics import precision_recall_curve, f1_score
 
 def force_make_dir(dirpath):
     if not os.path.exists(dirpath):
@@ -20,6 +21,7 @@ run_type = sys.argv[1]
 classname = sys.argv[2]
 SPEC_TYPE = 'mel'  # only for visualisation
 VOLUME_BOOST = 5  # for saving wav files
+print run_type, classname
 
 base_dir = '/media/michael/Engage/data/audio/alison_data/golden_set/'
 
@@ -37,6 +39,7 @@ wav_results_dir = force_make_dir(results_dir + '../wav_results/')
 # ASSESS FP ETC
 ##############################################################################
 print "\n\nResults across all files:"
+scores = {}
 total = dict.fromkeys(['tm', 'tp', 'tn', 'fp', 'fn'], 0)
 all_y_true = []
 all_y_pred = []
@@ -68,29 +71,53 @@ for fname in os.listdir(results_dir):
     fnames.append(fname.replace('.pkl', ''))
 
 
-print "Totals (in slices, not seconds)\n", total
-print "Correct: %d, wrong: %d" % (total['tp'] + total['tn'], total['fp'] + total['fn'])
-for key in ['tp', 'tn', 'fp', 'fn']:
-    total[key] *= slice_size
-    print key.ljust(5), '%0.2f' % total[key]
+# print "Totals (in slices, not seconds)\n", total
+# print "Correct: %d, wrong: %d" % (total['tp'] + total['tn'], total['fp'] + total['fn'])
+# for key in ['tp', 'tn', 'fp', 'fn']:
+#     total[key] *= slice_size
+#     print key.ljust(5), '%0.2f' % total[key]
 
-print "\nUnbalanced accuracy:"
-print float(total['tp'] + total['tn']) / sum(total[key] for key in ['tp', 'tn', 'fp', 'fn'])
+scores['unbalanced_accuracy'] = \
+    float(total['tp'] + total['tn']) / sum(total[key] for key in ['tp', 'tn', 'fp', 'fn'])
 
-print "Balanced accuracy:"
 A = float(total['tp']) / sum(total[key] for key in ['tp', 'fn'])
 B = float(total['tn']) / sum(total[key] for key in ['fp', 'tn'])
-print (A + B) / 2.0
+scores['balanced_accuracy'] = (A + B) / 2.0
+
+all_y_true_stacked = np.hstack(all_y_true)
+all_y_soft_stacked = np.hstack(all_y_soft)
+
+if all_y_soft_stacked.max() > 1.0:  # rescale...
+    all_y_soft_stacked -= all_y_soft_stacked.min()
+    all_y_soft_stacked /= all_y_soft_stacked.max()
+
+scores['f1'] = f1_score(all_y_true_stacked, all_y_soft_stacked > 0.5)
+
+##############################################################################
+# COMPUTING EXTRA STATS FOR TABLE
+##############################################################################
+
+from sklearn.metrics import precision_score, recall_score
+
+# Recall at 0.95 precision
+thresholds = np.linspace(0, 1.0, 100)
+precisions = [precision_score(all_y_true_stacked, all_y_soft_stacked > thresh)
+              for thresh in thresholds]
+
+min_idx = np.argmin(np.abs(np.hstack(precisions) - 0.95))
+threshold_to_use = thresholds[min_idx]
+
+scores['recall_at_095_prec'] = recall_score(
+    all_y_true_stacked, all_y_soft_stacked > threshold_to_use)
+
+for key, val in scores.iteritems():
+    print "%s - %0.3f" % (key.ljust(20), val)
+
+sys.exit()
 
 ##############################################################################
 # COMPUTING PR CURVE
 ##############################################################################
-from sklearn.metrics import precision_recall_curve
-all_y_true_stacked = np.hstack(all_y_true)
-all_y_soft_stacked = np.hstack(all_y_soft)
-if run_type != 'bulbul' and 'mel32' not in run_type:
-    all_y_soft_stacked -= all_y_soft_stacked.min()
-    all_y_soft_stacked /= all_y_soft_stacked.max()
 prec, recall, thresholds = precision_recall_curve(all_y_true_stacked, all_y_soft_stacked)
 
 # finding the P/R at threshold=0.5
@@ -100,9 +127,8 @@ totals['tp'] = np.logical_and(_true == _pred, _true == 1).sum()
 totals['tn'] = np.logical_and(_true == _pred, _true == 0).sum()
 totals['fp'] = np.logical_and(_true != _pred, _true == 0).sum()
 totals['fn'] = np.logical_and(_true != _pred, _true == 1).sum()
-prec_at_05 = totals['tp'] / float(totals['tp'] + totals['fp'])
-recall_at_05 = totals['tp'] / float(totals['tp'] + totals['fn'])
-print prec_at_05, recall_at_05
+scores['precision'] = totals['tp'] / float(totals['tp'] + totals['fp'])
+scores['recall'] = totals['tp'] / float(totals['tp'] + totals['fn'])
 
 with open(savedir + 'pr_results.pkl', 'w') as f:
     pickle.dump((prec, recall, thresholds, prec_at_05, recall_at_05), f, -1)
@@ -141,18 +167,19 @@ fmt = lambda x: "%s\n\n%2.1f%%" % (labels[x], cm.ravel()[x])
 annots = np.array([fmt(xx) for xx in range(4)]).reshape(2, 2)
 fig = plt.figure(figsize=(4, 4))
 ax = fig.add_axes((0.18,0.15,0.8,0.8))
-sns.heatmap(cm, annot=annots, fmt='s', ax=ax, cbar=False) #
+sns.heatmap(cm, annot=annots, fmt='s', ax=ax, cbar=1, vmin=0, vmax=100) #
 plt.savefig(savedir + 'confusion_matrix1.pdf')
 ax.grid('off')
 ax.set_aspect(1.0)
 plt.xticks([0.5, 1.5], ['None', classname.capitalize()])
 plt.yticks([0.5, 1.5], [classname.capitalize(), 'None'])
-plt.tick_params(axis='both', which='major', labelsize=16)
-plt.ylabel('Actual', fontsize=20)
-plt.xlabel('Predicted', fontsize=20)
+plt.tick_params(axis='both', which='major', labelsize=12)
+plt.ylabel('Actual', fontsize=16)
+plt.xlabel('Predicted', fontsize=16)
 plt.savefig(savedir + 'confusion_matrix.pdf')
 plt.savefig(savedir + 'confusion_matrix.png', dpi=800)
 plt.close()
+sd
 
 ##############################################################################
 # PLOT PER-FILE SCATTER PLOT
