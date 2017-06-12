@@ -99,9 +99,9 @@ class SpecSampler(object):
                 X[count] = self.specs[:, :, (loc-self.hww):(loc+self.hww)]
 
                 if not self.learn_log:
-                    X[count, 1] = X[count, 0] - self.medians[which]
+                    X[count, 1] = X[count, 0] - self.medians[which][:, None]
                     # X[count, 0] = (X[count, 0] - X[count, 0].mean()) / X[count, 0].std()
-                    X[count, 0] = (X[count, 1] - X[count, 1].mean(0, keepdims=True)) / (X[count, 1].std(0, keepdims=True) + 0.001)
+                    X[count, 0] = (X[count, 1] - X[count, 1].mean(1, keepdims=True)) / (X[count, 1].std(1, keepdims=True) + 0.001)
 
                     X[count, 2] = (X[count, 1] - X[count, 1].mean()) / X[count, 1].std()
                     X[count, 3] = X[count, 1] / X[count, 1].max()

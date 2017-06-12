@@ -5,7 +5,7 @@ import glob
 from uuid import uuid4
 from classifier import Classifier
 clfr = Classifier()
-
+todo - use secure_filename()  - http://flask.pocoo.org/docs/0.12/patterns/fileuploads/
 app = Flask(__name__)
 
 

@@ -80,7 +80,8 @@ def load_large_data(SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=np.iinfo(
     X = []
     y = []
 
-    num_dropped = 0
+    num_dropped = num_used = 0
+    sites_used = set()
     fnames = os.listdir(large_annotation_pkl_dir)
     for fname in fnames[:max_to_load]:
 
@@ -88,11 +89,16 @@ def load_large_data(SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=np.iinfo(
             num_dropped += 1
             continue
 
+        num_used += 1
+        sites_used.add(fname.split('-')[0].split('_')[0])
+
         spec, annots = load_data_helper(fname, SPEC_TYPE, LEARN_LOG, A, B, is_golden=False)
         X.append(spec)
         y.append(annots[CLASSNAME])
 
     print "Dropped %d files" % num_dropped
+    print "Used %d files" % num_used
+    print "Sites used: %d" % len(sites_used)
 
     height = min(xx.shape[0] for xx in X)
     X = [xx[-height:, :] for xx in X]
