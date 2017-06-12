@@ -105,7 +105,7 @@ class SpecSampler(object):
                     X[count, 2] = (X[count, 1] - X[count, 1].mean()) / X[count, 1].std()
                     X[count, 3] = X[count, 1] / X[count, 1].max()
 
-                y[count] = self.labels[loc]
+                y[count] = self.labels[(loc-self.hww):(loc+self.hww)].max()
                 if self.learn_log:
                     which = self.which_spec[loc]
                     X_medians[count] = self.medians[which]
@@ -233,11 +233,12 @@ def create_net(SPEC_HEIGHT, HWW, LEARN_LOG, NUM_FILTERS,
 
     net['conv1_1'] = batch_norm(
         ConvLayer(net['input'], NUM_FILTERS, (SPEC_HEIGHT - WIGGLE_ROOM, CONV_FILTER_WIDTH), nonlinearity=vlr))
-    net['pool1'] = PoolLayer(net['conv1_1'], pool_size=(2, 2), stride=(2, 2), mode='max')
-    net['pool1'] = DropoutLayer(net['pool1'], p=0.5)
+    # net['pool1'] = PoolLayer(net['conv1_1'], pool_size=(2, 2), stride=(2, 2), mode='max')
+    net['pool1'] = DropoutLayer(net['conv1_1'], p=0.5)
     net['conv1_2'] = batch_norm(ConvLayer(net['pool1'], NUM_FILTERS, (1, 3), nonlinearity=vlr))
-    # net['pool2'] = PoolLayer(net['conv1_2'], pool_size=(1, 2), stride=(1, 1))
-    net['pool2'] = DropoutLayer(net['conv1_2'], p=0.5)
+    W = net['conv1_2'].output_shape[3]
+    net['pool2'] = PoolLayer(net['conv1_2'], pool_size=(1, W), stride=(1, 1), mode='max')
+    net['pool2'] = DropoutLayer(net['pool2'], p=0.5)
 
     net['fc6'] = batch_norm(DenseLayer(net['pool2'], num_units=NUM_DENSE_UNITS, nonlinearity=vlr))
     net['fc6'] = DropoutLayer(net['fc6'], p=0.5)

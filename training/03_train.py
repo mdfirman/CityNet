@@ -43,18 +43,21 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
     x_in = net['input'].input_var
 
     # print lasagne.layers.get_output_shape_for(net['prob'])
-    net_output = lasagne.layers.get_output(net['prob'])
+    trn_output = lasagne.layers.get_output(net['prob'], deterministic=False)
+    test_output = lasagne.layers.get_output(net['prob'], deterministic=True)
     params = lasagne.layers.get_all_params(net['prob'], trainable=True)
 
-    loss = lasagne.objectives.categorical_crossentropy(net_output, y_in).mean()
-    acc = T.mean(T.eq(T.argmax(net_output, axis=1), y_in))
+    _trn_loss = lasagne.objectives.categorical_crossentropy(trn_output, y_in).mean()
+    _test_loss = lasagne.objectives.categorical_crossentropy(test_output, y_in).mean()
+    _trn_acc = T.mean(T.eq(T.argmax(trn_output, axis=1), y_in))
+    _test_acc = T.mean(T.eq(T.argmax(test_output, axis=1), y_in))
 
-    updates = lasagne.updates.adam(loss, params, learning_rate=LEARNING_RATE)
+    updates = lasagne.updates.adam(_trn_loss, params, learning_rate=LEARNING_RATE)
 
     print "Compiling...",
-    train_fn = theano.function([x_in, y_in], [loss, acc], updates=updates)
-    val_fn = theano.function([x_in, y_in], [loss, acc])
-    pred_fn = theano.function([x_in], net_output)
+    train_fn = theano.function([x_in, y_in], [_trn_loss, _trn_acc], updates=updates)
+    val_fn = theano.function([x_in, y_in], [_test_loss, _test_acc])
+    pred_fn = theano.function([x_in], test_output)
     print "DONE"
 
     for epoch in range(MAX_EPOCHS):
@@ -110,44 +113,42 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
 
 
 def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
-        DO_AUGMENTATION,
+        DO_AUGMENTATION, ENSEMBLE_MEMBERS,
         LEARN_LOG, A, B, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
         NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE):
 
     print CLASSNAME, RUN_TYPE
 
-    logging_dir = data_io.base + 'predictions/%s/%s/' % (RUN_TYPE, CLASSNAME)
-    train_helpers.force_make_dir(logging_dir)
-    sys.stdout = ui.Logger(logging_dir + 'log.txt')
-
-    # train_files_large, test_files_large = data_io.load_splits(
-    #     test_fold=test_fold, large_data=True)
-    # all_train_files = train_files_large + test_files_large
-
     # loading testing data
     # (remember, here we are testing on ALL golden... so it doesn't matter what the test fold is
-    print "WARING" * 10
+    # print "WARING" * 10
     train_files, test_files = data_io.load_splits(test_fold=0)
     test_X, test_y = data_io.load_data(
-        test_files[:1] + train_files[:1], SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
+        test_files + train_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
 
     # loading training data...
-    print "WARING" * 10
+    # print "WARING" * 10
     train_X, train_y = data_io.load_large_data(
-        SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=10)
+        SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=10000000)
 
-    train_and_test(train_X, test_X, train_y, test_y, test_files + train_files,
-            logging_dir, CLASSNAME, HWW, DO_AUGMENTATION,
-            LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
-            NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE)
+    for idx in range(ENSEMBLE_MEMBERS):
+        logging_dir = data_io.base + 'predictions/%s/%d/%s/' % (RUN_TYPE, idx, CLASSNAME)
+        train_helpers.force_make_dir(logging_dir)
+        sys.stdout = ui.Logger(logging_dir + 'log.txt')
+
+        train_and_test(train_X, test_X, train_y, test_y, test_files + train_files,
+                logging_dir, CLASSNAME, HWW, DO_AUGMENTATION,
+                LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
+                NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE)
 
 
 if __name__ == '__main__':
     params = dict(
         SPEC_TYPE = 'mel',
+        ENSEMBLE_MEMBERS = 5,
 
         # data preprocessing options
-        HWW = 5,
+        HWW = 10,
         LEARN_LOG = 0,
         DO_AUGMENTATION = 1,
 
@@ -157,7 +158,7 @@ if __name__ == '__main__':
         NUM_DENSE_UNITS = 128,
         CONV_FILTER_WIDTH = 4,
         WIGGLE_ROOM = 5,
-        MAX_EPOCHS = 1,
+        MAX_EPOCHS = 30,
         LEARNING_RATE = 0.001,
 
         CLASSNAME = class_to_use
@@ -173,7 +174,6 @@ if __name__ == '__main__':
 
     params['NUM_FILTERS'] *= 4
     params['NUM_DENSE_UNITS'] *= 4
-    train_large_test_golden(
-        RUN_TYPE = 'tmp',
-        **params
-    )
+    RUN_TYPE = 'ensemble_train'
+
+    train_large_test_golden(RUN_TYPE=RUN_TYPE, **params)
