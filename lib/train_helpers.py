@@ -195,8 +195,6 @@ class LearnLogLayer(lasagne.layers.Layer):
         return (input_shape[0], self.num_repeats, input_shape[2], input_shape[3])
 
 
-
-
 def create_net(SPEC_HEIGHT, HWW, LEARN_LOG, NUM_FILTERS,
     WIGGLE_ROOM, CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM):
 

@@ -15,7 +15,9 @@ import data_io
 
 train_name = 'ensemble_train'
 classname = 'biotic'
-load_path = '/media/michael/Engage/data/audio/alison_data/golden_set/predictions/%s/%d/%s/results/weights_99.pkl'
+base = '/media/michael/Engage/data/audio/alison_data/golden_set/predictions/'
+load_path = base + '/%s/%d/%s/results/weights_99.pkl'
+predictions_savedir = train_helpers.force_make_dir(base + '/%s/per_file_predictions/')
 
 
 def predict(A, B, ENSEMBLE_MEMBERS, SPEC_TYPE,
@@ -25,7 +27,7 @@ def predict(A, B, ENSEMBLE_MEMBERS, SPEC_TYPE,
 
     # Loading data
     golden_1, golden_2 = data_io.load_splits(test_fold=0)
-    test_files = golden_1[:10]# + golden_2
+    test_files = golden_1 + golden_2
     test_X, test_y = data_io.load_data(test_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
 
     # # creaging samplers and batch iterators
@@ -55,7 +57,7 @@ def predict(A, B, ENSEMBLE_MEMBERS, SPEC_TYPE,
 
         A = float(total['tp']) / sum(total[key] for key in ['tp', 'fn'])
         B = float(total['tn']) / sum(total[key] for key in ['fp', 'tn'])
-        print (A + B) / 2.0
+        return (A + B) / 2.0
 
     # Load network weights
     for idx in range(ENSEMBLE_MEMBERS):
@@ -67,9 +69,6 @@ def predict(A, B, ENSEMBLE_MEMBERS, SPEC_TYPE,
 
         #######################
         # TESTING
-        # results_savedir = train_helpers.force_make_dir(logging_dir + 'results/')
-        # predictions_savedir = train_helpers.force_make_dir(logging_dir + 'per_file_predictions/')
-
         for fname, spec, y in zip(test_files, test_X, test_y):
 
             probas = []
@@ -85,9 +84,7 @@ def predict(A, B, ENSEMBLE_MEMBERS, SPEC_TYPE,
         all_pred_prob = np.vstack(y_preds_proba[fname][-1] for fname in test_files)
         all_pred = np.argmax(all_pred_prob, axis=1)
         all_gt = np.hstack(y_gts[fname] for fname in test_files)
-        print all_pred_prob.shape, all_pred.shape, all_gt.shape
-        print "%d:" % idx, bal_acc(all_gt, all_pred)
-
+        print bal_acc(all_gt, all_pred)
 
     # aggregating ensemble members
     all_probs = []
@@ -99,19 +96,15 @@ def predict(A, B, ENSEMBLE_MEMBERS, SPEC_TYPE,
         combined_preds = np.argmax(combined_preds_prob, axis=1)
         y_gt = y_gts[fname]
 
+        with open(predictions_savedir + fname, 'w') as f:
+            pickle.dump([y_gt, combined_preds_prob], f, -1)
+
         all_probs.append(combined_preds)
         all_gt.append(y_gt)
-
-        # y_pred = np.argmax(y_pred_proba[fname], axis=1)
-
-        # print ((combined_preds > 0.5) == y_gt).mean(), combined_preds.mean()
 
     y_pred_class = np.hstack(all_probs)
     y_true = np.hstack(all_gt)
     print "Combined:", bal_acc(y_true, y_pred_class)
-#
-            # with open(predictions_savedir + fname, 'w') as f:
-            #     pickle.dump([y_true, y_pred_prob], f, -1)
 
 
 if __name__ == '__main__':
