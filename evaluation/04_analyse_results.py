@@ -6,10 +6,11 @@ import matplotlib.pyplot as plt
 import os
 import sys
 import cPickle as pickle
+import yaml
 import numpy as np
-# import seaborn as sns
+import seaborn as sns
 import sklearn
-from sklearn.metrics import precision_recall_curve, f1_score
+from sklearn.metrics import precision_recall_curve, f1_score, average_precision_score
 
 def force_make_dir(dirpath):
     if not os.path.exists(dirpath):
@@ -50,8 +51,17 @@ sums_gt = []
 fnames = []
 
 for fname in os.listdir(results_dir):
-    y_true, y_pred_proba = pickle.load(open(results_dir + fname))
+    _y_true, y_pred_proba = pickle.load(open(results_dir + fname))
     y_pred_class = y_pred_proba[:, 1] > 0.5
+
+    # for the one-second pooling, we need to apply a filter over the ground truth...
+    y_true = _y_true.copy()
+    hww = 10
+    for idx, _ in enumerate(_y_true):
+        start = max(idx - hww, 0)
+        end = min(idx + hww, _y_true.shape[0])
+        y_true[idx] = _y_true[start:end].max()
+
     y_true = y_true > 0.5
 
     total['tm'] += y_true.shape[0]
@@ -70,12 +80,6 @@ for fname in os.listdir(results_dir):
     sums_pred_soft.append(y_pred_proba[:, 1].sum() * slice_size)
     fnames.append(fname.replace('.pkl', ''))
 
-
-# print "Totals (in slices, not seconds)\n", total
-# print "Correct: %d, wrong: %d" % (total['tp'] + total['tn'], total['fp'] + total['fn'])
-# for key in ['tp', 'tn', 'fp', 'fn']:
-#     total[key] *= slice_size
-#     print key.ljust(5), '%0.2f' % total[key]
 
 scores['unbalanced_accuracy'] = \
     float(total['tp'] + total['tn']) / sum(total[key] for key in ['tp', 'tn', 'fp', 'fn'])
@@ -113,7 +117,6 @@ scores['recall_at_095_prec'] = recall_score(
 for key, val in scores.iteritems():
     print "%s - %0.3f" % (key.ljust(20), val)
 
-sys.exit()
 
 ##############################################################################
 # COMPUTING PR CURVE
@@ -129,13 +132,18 @@ totals['fp'] = np.logical_and(_true != _pred, _true == 0).sum()
 totals['fn'] = np.logical_and(_true != _pred, _true == 1).sum()
 scores['precision'] = totals['tp'] / float(totals['tp'] + totals['fp'])
 scores['recall'] = totals['tp'] / float(totals['tp'] + totals['fn'])
+scores['avg_precision'] = average_precision_score(all_y_true_stacked, all_y_soft_stacked)
+
 
 with open(savedir + 'pr_results.pkl', 'w') as f:
-    pickle.dump((prec, recall, thresholds, prec_at_05, recall_at_05), f, -1)
+    pickle.dump((prec, recall, thresholds, scores['precision'], scores['recall']), f, -1)
+
+with open(savedir + 'scores.yaml', 'w') as f:
+    yaml.dump(scores, f)
 
 # Plotting PR curve
 plt.plot(recall, prec)
-plt.plot(recall_at_05, prec_at_05, 'ob', ms=6)
+plt.plot(scores['recall'], scores['precision'], 'ob', ms=6)
 plt.xlim(0, 1.05)
 plt.ylim(0, 1.05)
 plt.xlabel('Precision')
@@ -143,6 +151,7 @@ plt.ylabel('Recall')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.draw()
 plt.savefig(savedir + 'pr_curve.pdf')
+sys.exit()
 
 ##############################################################################
 # SAVING CSV SUMMARY
@@ -179,7 +188,6 @@ plt.xlabel('Predicted', fontsize=16)
 plt.savefig(savedir + 'confusion_matrix.pdf')
 plt.savefig(savedir + 'confusion_matrix.png', dpi=800)
 plt.close()
-sd
 
 ##############################################################################
 # PLOT PER-FILE SCATTER PLOT
@@ -219,7 +227,6 @@ print "\nResults Soft"
 for cc in [mean_absolute_error, mean_squared_error, median_absolute_error, r2_score]:
     print cc(sums_gt, sums_pred_soft)
 
-
 ##############################################################################
 # PLOTTING RESULTS SPECTROGRAMS
 ##############################################################################
@@ -258,7 +265,6 @@ for fname in os.listdir(results_dir):
     plt.close()
 
     print ".",
-
 
 ##############################################################################
 # SAVING WAV FILES

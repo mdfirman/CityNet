@@ -11,10 +11,11 @@ run_types = [
     'timestep_ACI_noRound_baseline',
     'overlap_ACI_noRound_baseline',
     'timestep_ACI_Round_baseline',
-    'overlap_ACI_Round_baseline'
+    'overlap_ACI_Round_baseline',
+    'ensemble_train'
     ]
 
-if 0:
+if 1:
     for run_type in run_types:
         print "--- ", run_type, "---"
         sp.call(['python', '04_analyse_results.py', run_type, 'biotic'])
