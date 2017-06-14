@@ -37,25 +37,30 @@ def force_make_dir(dirpath):
 
 class SpecSampler(object):
 
-    def __init__(self, batch_size, hww, do_aug, learn_log, randomise=False,
+    def __init__(self, batch_size, hww_x, hww_y, do_aug, learn_log, randomise=False,
             seed=None, balanced=True):
         self.do_aug = do_aug
         self.learn_log = learn_log
-        self.hww = hww
+        self.hww_x = hww_x
+        self.hww_y = hww_y
         self.seed = seed
         self.randomise = randomise
         self.balanced = balanced
         self.batch_size = batch_size
 
     def __call__(self, X, y=None):
-        blank_spec = np.zeros((X[0].shape[0], 2*self.hww))
+
+        # must pad X and Y the same amount
+        pad_hww = max(self.hww_x, self.hww_y)
+
+        blank_spec = np.zeros((X[0].shape[0], 2 * pad_hww))
         self.specs = np.hstack([blank_spec] + X + [blank_spec])[None, ...]
 
-        blank_label = np.zeros(2*self.hww) - 1
+        blank_label = np.zeros(2 * pad_hww) - 1
         if y is not None:
             labels = [yy > 0 for yy in y]
         else:
-            labels = [np.zeros(self.specs.shape[2] - 4*self.hww)]
+            labels = [np.zeros(self.specs.shape[2] - 4 * pad_hww)]
 
         self.labels = np.hstack([blank_label] + labels + [blank_label])
 
@@ -86,7 +91,7 @@ class SpecSampler(object):
 
             # extract the specs
             bs = y.shape[0]  # avoid using self.batch_size as last batch may be smaller
-            X = np.zeros((bs, channels, height, self.hww*2), np.float32)
+            X = np.zeros((bs, channels, height, self.hww_x*2), np.float32)
             y = np.zeros(bs) * np.nan
             if self.learn_log:
                 X_medians = np.zeros((bs, channels, height), np.float32)
@@ -95,7 +100,7 @@ class SpecSampler(object):
             for loc in sampled_locs:
                 which = self.which_spec[loc]
 
-                X[count] = self.specs[:, :, (loc-self.hww):(loc+self.hww)]
+                X[count] = self.specs[:, :, (loc-self.hww_x):(loc+self.hww_x)]
 
                 if not self.learn_log:
                     X[count, 1] = X[count, 0] - self.medians[which][:, None]
@@ -105,7 +110,7 @@ class SpecSampler(object):
                     X[count, 2] = (X[count, 1] - X[count, 1].mean()) / X[count, 1].std()
                     X[count, 3] = X[count, 1] / X[count, 1].max()
 
-                y[count] = self.labels[(loc-self.hww):(loc+self.hww)].max()
+                y[count] = self.labels[(loc-self.hww_y):(loc+self.hww_y)].max()
                 if self.learn_log:
                     which = self.which_spec[loc]
                     X_medians[count] = self.medians[which]
@@ -228,7 +233,7 @@ def create_net(SPEC_HEIGHT, HWW, LEARN_LOG, NUM_FILTERS,
         # performing the multiplications
         net['input'] = NormalisationLayer((net['input_logged'], net['med_logged']))
 
-
+    print SPEC_HEIGHT
     net['conv1_1'] = batch_norm(
         ConvLayer(net['input'], NUM_FILTERS, (SPEC_HEIGHT - WIGGLE_ROOM, CONV_FILTER_WIDTH), nonlinearity=vlr))
     # net['pool1'] = PoolLayer(net['conv1_1'], pool_size=(2, 2), stride=(2, 2), mode='max')

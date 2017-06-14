@@ -1,6 +1,4 @@
 # creating spectrograms from all the files, and saving split labelled versions to disk ready for machine learning
-import matplotlib.pyplot as plt
-
 import sys
 class_to_use = sys.argv[1]
 
@@ -16,11 +14,12 @@ from train_helpers import SpecSampler
 import train_helpers
 import data_io
 from ml_helpers import ui
-from ml_helpers.evaluation import plot_confusion_matrix
 from tqdm import tqdm
+small = False
+
 
 def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
-        CLASSNAME, HWW, DO_AUGMENTATION, LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM,
+        CLASSNAME, HWW_X, HWW_Y, DO_AUGMENTATION, LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM,
         CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS,
         LEARNING_RATE, TEST_FOLD=99, val_X=None, val_y=None):
     '''
@@ -32,11 +31,11 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
         val_y = test_y
 
     # # creaging samplers and batch iterators
-    train_sampler = SpecSampler(64, HWW, DO_AUGMENTATION, LEARN_LOG, randomise=True, balanced=True)
-    test_sampler = SpecSampler(64, HWW, False, LEARN_LOG, randomise=False, seed=10, balanced=True)
+    train_sampler = SpecSampler(64, HWW_X, HWW_Y, DO_AUGMENTATION, LEARN_LOG, randomise=True, balanced=True)
+    test_sampler = SpecSampler(64, HWW_X, HWW_Y, False, LEARN_LOG, randomise=False, seed=10, balanced=True)
 
     height = train_X[0].shape[0]
-    net = train_helpers.create_net(height, HWW, LEARN_LOG, NUM_FILTERS,
+    net = train_helpers.create_net(height, HWW_X, LEARN_LOG, NUM_FILTERS,
         WIGGLE_ROOM, CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM)
 
     y_in = T.ivector()
@@ -90,7 +89,7 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
     results_savedir = train_helpers.force_make_dir(logging_dir + 'results/')
     predictions_savedir = train_helpers.force_make_dir(logging_dir + 'per_file_predictions/')
 
-    test_sampler = SpecSampler(64, HWW, False, LEARN_LOG, randomise=False, seed=10, balanced=False)
+    test_sampler = SpecSampler(64, HWW_X, HWW_Y, False, LEARN_LOG, randomise=False, seed=10, balanced=False)
 
     for fname, spec, y in zip(test_files, test_X, test_y):
         probas = []
@@ -112,7 +111,7 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
         pickle.dump(param_vals, f, -1)
 
 
-def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
+def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW_X, HWW_Y,
         DO_AUGMENTATION, ENSEMBLE_MEMBERS,
         LEARN_LOG, A, B, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
         NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE):
@@ -122,22 +121,27 @@ def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW,
     # loading testing data
     # (remember, here we are testing on ALL golden... so it doesn't matter what the test fold is
     # print "WARING" * 10
-    train_files, test_files = data_io.load_splits(test_fold=0)
-    test_X, test_y = data_io.load_data(
-        test_files + train_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
+    golden_1, golden_2 = data_io.load_splits(test_fold=0)
+    test_files = golden_1 + golden_2
+    if small:
+        test_files = test_files[:3]
+        max_to_load = 3
+    else:
+        max_to_load = 10000000
+    test_X, test_y = data_io.load_data(test_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
 
     # loading training data...
     # print "WARING" * 10
     train_X, train_y = data_io.load_large_data(
-        SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=10000000)
+        SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=max_to_load)
 
     for idx in range(ENSEMBLE_MEMBERS):
         logging_dir = data_io.base + 'predictions/%s/%d/%s/' % (RUN_TYPE, idx, CLASSNAME)
         train_helpers.force_make_dir(logging_dir)
         sys.stdout = ui.Logger(logging_dir + 'log.txt')
 
-        train_and_test(train_X, test_X, train_y, test_y, test_files + train_files,
-                logging_dir, CLASSNAME, HWW, DO_AUGMENTATION,
+        train_and_test(train_X, test_X, train_y, test_y, test_files,
+                logging_dir, CLASSNAME, HWW_X, HWW_Y, DO_AUGMENTATION,
                 LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
                 NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE)
 
@@ -148,17 +152,18 @@ if __name__ == '__main__':
         ENSEMBLE_MEMBERS = 5,
 
         # data preprocessing options
-        HWW = 10,
+        HWW_X = 10,
+        HWW_Y = 10,
         LEARN_LOG = 0,
         DO_AUGMENTATION = 1,
 
         # network parameters
         DO_BATCH_NORM = 1,
-        NUM_FILTERS = 32,
-        NUM_DENSE_UNITS = 128,
+        NUM_FILTERS = 32 * 4,
+        NUM_DENSE_UNITS = 128 * 4,
         CONV_FILTER_WIDTH = 4,
         WIGGLE_ROOM = 5,
-        MAX_EPOCHS = 30,
+        MAX_EPOCHS = 5,
         LEARNING_RATE = 0.001,
 
         CLASSNAME = class_to_use
@@ -172,8 +177,6 @@ if __name__ == '__main__':
     for key, val in params.iteritems():
         print "   ", key.ljust(20), val
 
-    params['NUM_FILTERS'] *= 4
-    params['NUM_DENSE_UNITS'] *= 4
-    RUN_TYPE = 'ensemble_train'
+    RUN_TYPE = 'ensemble_train_bigger_x_width'
 
     train_large_test_golden(RUN_TYPE=RUN_TYPE, **params)

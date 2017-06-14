@@ -13,15 +13,16 @@ from train_helpers import SpecSampler
 import train_helpers
 import data_io
 
-train_name = 'ensemble_train'
-classname = 'biotic'
+train_name = 'ensemble_train_bigger_x_width'
+classname = 'anthrop'
 base = '/media/michael/Engage/data/audio/alison_data/golden_set/predictions/'
 load_path = base + '/%s/%d/%s/results/weights_99.pkl'
-predictions_savedir = train_helpers.force_make_dir(base + '/%s/per_file_predictions/')
+predictions_savedir = train_helpers.force_make_dir(
+    base + '/%s/%s/per_file_predictions/' % (train_name, classname))
 
 
 def predict(A, B, ENSEMBLE_MEMBERS, SPEC_TYPE,
-        CLASSNAME, HWW, DO_AUGMENTATION, LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM,
+        CLASSNAME, HWW_X, HWW_Y, DO_AUGMENTATION, LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM,
         CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS,
         LEARNING_RATE):
 
@@ -31,10 +32,10 @@ def predict(A, B, ENSEMBLE_MEMBERS, SPEC_TYPE,
     test_X, test_y = data_io.load_data(test_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
 
     # # creaging samplers and batch iterators
-    test_sampler = SpecSampler(64, HWW, False, LEARN_LOG, randomise=False, seed=10, balanced=True)
+    test_sampler = SpecSampler(64, HWW_X, HWW_Y, False, LEARN_LOG, randomise=False, seed=10, balanced=True)
 
     height = test_X[0].shape[0]
-    net = train_helpers.create_net(height, HWW, LEARN_LOG, NUM_FILTERS,
+    net = train_helpers.create_net(height, HWW_X, LEARN_LOG, NUM_FILTERS,
         WIGGLE_ROOM, CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM)
 
     x_in = net['input'].input_var
@@ -42,7 +43,7 @@ def predict(A, B, ENSEMBLE_MEMBERS, SPEC_TYPE,
     test_output = lasagne.layers.get_output(net['prob'], deterministic=True)
     pred_fn = theano.function([x_in], test_output)
 
-    test_sampler = SpecSampler(64, HWW, False, LEARN_LOG, randomise=False, seed=10, balanced=False)
+    test_sampler = SpecSampler(64, HWW_X, HWW_Y, False, LEARN_LOG, randomise=False, seed=10, balanced=False)
 
     y_preds_proba = collections.defaultdict(list)
     y_gts = {}
@@ -113,7 +114,8 @@ if __name__ == '__main__':
         ENSEMBLE_MEMBERS = 5,
 
         # data preprocessing options
-        HWW = 10,
+        HWW_X = 10,
+        HWW_Y = 10,
         LEARN_LOG = 0,
         DO_AUGMENTATION = 1,
 
