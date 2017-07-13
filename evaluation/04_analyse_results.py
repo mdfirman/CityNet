@@ -53,14 +53,22 @@ fnames = []
 for fname in os.listdir(results_dir):
     _y_true, y_pred_proba = pickle.load(open(results_dir + fname))
     y_pred_class = y_pred_proba[:, 1] > 0.5
+    #
+    # # only trust ndsi truth
+    # if classname == 'biotic':
+    #     tmp_results_dir = base_dir + 'predictions/%s/%s/per_file_predictions/' % ('warblr_challenge_baseline', classname)
+    # _y_true, _ = pickle.load(open(tmp_results_dir + fname))
+
+    assert _y_true.shape[0] == y_pred_class.shape[0]
 
     # for the one-second pooling, we need to apply a filter over the ground truth...
     y_true = _y_true.copy()
-    hww = 10
-    for idx, _ in enumerate(_y_true):
-        start = max(idx - hww, 0)
-        end = min(idx + hww, _y_true.shape[0])
-        y_true[idx] = _y_true[start:end].max()
+    if 'ensemble' not in run_type:
+        hww = 10
+        for idx, _ in enumerate(_y_true):
+            start = max(idx - hww, 0)
+            end = min(idx + hww, _y_true.shape[0])
+            y_true[idx] = _y_true[start:end].max()
 
     y_true = y_true > 0.5
 
@@ -97,26 +105,6 @@ if all_y_soft_stacked.max() > 1.0:  # rescale...
 
 scores['f1'] = f1_score(all_y_true_stacked, all_y_soft_stacked > 0.5)
 
-##############################################################################
-# COMPUTING EXTRA STATS FOR TABLE
-##############################################################################
-
-from sklearn.metrics import precision_score, recall_score
-
-# Recall at 0.95 precision
-thresholds = np.linspace(0, 1.0, 100)
-precisions = [precision_score(all_y_true_stacked, all_y_soft_stacked > thresh)
-              for thresh in thresholds]
-
-min_idx = np.argmin(np.abs(np.hstack(precisions) - 0.95))
-threshold_to_use = thresholds[min_idx]
-
-scores['recall_at_095_prec'] = recall_score(
-    all_y_true_stacked, all_y_soft_stacked > threshold_to_use)
-
-for key, val in scores.iteritems():
-    print "%s - %0.3f" % (key.ljust(20), val)
-
 
 ##############################################################################
 # COMPUTING PR CURVE
@@ -138,9 +126,6 @@ scores['avg_precision'] = average_precision_score(all_y_true_stacked, all_y_soft
 with open(savedir + 'pr_results.pkl', 'w') as f:
     pickle.dump((prec, recall, thresholds, scores['precision'], scores['recall']), f, -1)
 
-with open(savedir + 'scores.yaml', 'w') as f:
-    yaml.dump(scores, f)
-
 # Plotting PR curve
 plt.plot(recall, prec)
 plt.plot(scores['recall'], scores['precision'], 'ob', ms=6)
@@ -151,7 +136,22 @@ plt.ylabel('Recall')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.draw()
 plt.savefig(savedir + 'pr_curve.pdf')
-sys.exit()
+
+##############################################################################
+# COMPUTING EXTRA STATS FOR TABLE
+##############################################################################
+
+from sklearn.metrics import precision_score, recall_score
+
+# Recall at 0.95 precision
+min_idx = np.argmin(np.abs(np.hstack(prec) - 0.95))
+scores['recall_at_095_prec'] = recall[min_idx]
+
+for key, val in scores.iteritems():
+    print "%s - %0.3f" % (key.ljust(20), val)
+
+with open(savedir + 'scores.yaml', 'w') as f:
+    yaml.dump(scores, f)
 
 ##############################################################################
 # SAVING CSV SUMMARY
@@ -168,8 +168,9 @@ from sklearn.metrics import confusion_matrix
 
 print "\nPlotting conf matrix:"
 all_y_true = np.hstack(all_y_true)
-all_y_pred = np.hstack(all_y_pred)
-cm = (confusion_matrix(all_y_true, all_y_pred) * slice_size).astype(float)
+print "Print mean", all_y_true.mean()
+all_y_pred = all_y_soft_stacked > thresholds[min_idx]
+cm = (confusion_matrix(all_y_true, all_y_pred) * slice_size).astype(float)[::-1, ::-1]#.T[::-1, ::-1].T
 cm = cm / cm.sum() * 100
 labels = ['True Positive', 'False Positive', 'False Negative', 'True Negative']
 fmt = lambda x: "%s\n\n%2.1f%%" % (labels[x], cm.ravel()[x])
@@ -177,17 +178,19 @@ annots = np.array([fmt(xx) for xx in range(4)]).reshape(2, 2)
 fig = plt.figure(figsize=(4, 4))
 ax = fig.add_axes((0.18,0.15,0.8,0.8))
 sns.heatmap(cm, annot=annots, fmt='s', ax=ax, cbar=1, vmin=0, vmax=100) #
-plt.savefig(savedir + 'confusion_matrix1.pdf')
+#plt.savefig(savedir + 'confusion_matrix1.pdf')
 ax.grid('off')
 ax.set_aspect(1.0)
-plt.xticks([0.5, 1.5], ['None', classname.capitalize()])
-plt.yticks([0.5, 1.5], [classname.capitalize(), 'None'])
+plt.xticks([0.5, 1.5], [classname.capitalize(), 'None'])
+plt.yticks([0.5, 1.5], ['None', classname.capitalize()])
 plt.tick_params(axis='both', which='major', labelsize=12)
 plt.ylabel('Actual', fontsize=16)
 plt.xlabel('Predicted', fontsize=16)
 plt.savefig(savedir + 'confusion_matrix.pdf')
 plt.savefig(savedir + 'confusion_matrix.png', dpi=800)
+plt.savefig('/home/michael/Dropbox/engage/FairbrassFirmanetal_/data/predictions/pr_curves/%s_%s.pdf' % (run_type, classname))
 plt.close()
+sys.exit()
 
 ##############################################################################
 # PLOT PER-FILE SCATTER PLOT
