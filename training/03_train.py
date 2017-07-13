@@ -1,4 +1,3 @@
-# creating spectrograms from all the files, and saving split labelled versions to disk ready for machine learning
 import sys
 class_to_use = sys.argv[1]
 
@@ -9,19 +8,21 @@ import lasagne
 import theano.tensor as T
 import theano
 
+from tqdm import tqdm
+from easydict import EasyDict as edict
+import yaml
+
 sys.path.append('../lib')
 from train_helpers import SpecSampler
 import train_helpers
 import data_io
 from ml_helpers import ui
-from tqdm import tqdm
+
 small = False
 
 
-def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
-        CLASSNAME, HWW_X, HWW_Y, DO_AUGMENTATION, LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM,
-        CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS,
-        LEARNING_RATE, TEST_FOLD=99, val_X=None, val_y=None):
+def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir, opts, TEST_FOLD=99,
+        val_X=None, val_y=None):
     '''
     Doesn't do any data loading - assumes the train and test data are passed
     in as parameters!
@@ -31,12 +32,12 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
         val_y = test_y
 
     # # creaging samplers and batch iterators
-    train_sampler = SpecSampler(64, HWW_X, HWW_Y, DO_AUGMENTATION, LEARN_LOG, randomise=True, balanced=True)
-    test_sampler = SpecSampler(64, HWW_X, HWW_Y, False, LEARN_LOG, randomise=False, seed=10, balanced=True)
+    train_sampler = SpecSampler(64, opts.HWW_X, opts.HWW_Y, opts.DO_AUGMENTATION, opts.LEARN_LOG, randomise=True, balanced=True)
+    test_sampler = SpecSampler(64, opts.HWW_X, opts.HWW_Y, False, opts.LEARN_LOG, randomise=False, seed=10, balanced=True)
 
     height = train_X[0].shape[0]
-    net = train_helpers.create_net(height, HWW_X, LEARN_LOG, NUM_FILTERS,
-        WIGGLE_ROOM, CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM)
+    net = train_helpers.create_net(height, opts.HWW_X, opts.LEARN_LOG, opts.NUM_FILTERS,
+        opts.WIGGLE_ROOM, opts.CONV_FILTER_WIDTH, opts.NUM_DENSE_UNITS, opts.DO_BATCH_NORM)
 
     y_in = T.ivector()
     x_in = net['input'].input_var
@@ -51,7 +52,7 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
     _trn_acc = T.mean(T.eq(T.argmax(trn_output, axis=1), y_in))
     _test_acc = T.mean(T.eq(T.argmax(test_output, axis=1), y_in))
 
-    updates = lasagne.updates.adam(_trn_loss, params, learning_rate=LEARNING_RATE)
+    updates = lasagne.updates.adam(_trn_loss, params, learning_rate=opts.LEARNING_RATE)
 
     print "Compiling...",
     train_fn = theano.function([x_in, y_in], [_trn_loss, _trn_acc], updates=updates)
@@ -59,7 +60,7 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
     pred_fn = theano.function([x_in], test_output)
     print "DONE"
 
-    for epoch in range(MAX_EPOCHS):
+    for epoch in range(opts.MAX_EPOCHS):
 
         ######################
         # TRAINING
@@ -89,7 +90,7 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
     results_savedir = train_helpers.force_make_dir(logging_dir + 'results/')
     predictions_savedir = train_helpers.force_make_dir(logging_dir + 'per_file_predictions/')
 
-    test_sampler = SpecSampler(64, HWW_X, HWW_Y, False, LEARN_LOG, randomise=False, seed=10, balanced=False)
+    test_sampler = SpecSampler(64, opts.HWW_X, opts.HWW_Y, False, opts.LEARN_LOG, randomise=False, seed=10, balanced=False)
 
     for fname, spec, y in zip(test_files, test_X, test_y):
         probas = []
@@ -111,12 +112,9 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir,
         pickle.dump(param_vals, f, -1)
 
 
-def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW_X, HWW_Y,
-        DO_AUGMENTATION, ENSEMBLE_MEMBERS,
-        LEARN_LOG, A, B, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
-        NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE):
+def train_large_test_golden(RUN_TYPE, opts):
 
-    print CLASSNAME, RUN_TYPE
+    print opts.CLASSNAME, RUN_TYPE
 
     # loading testing data
     # (remember, here we are testing on ALL golden... so it doesn't matter what the test fold is
@@ -128,26 +126,26 @@ def train_large_test_golden(RUN_TYPE, SPEC_TYPE, CLASSNAME, HWW_X, HWW_Y,
         max_to_load = 3
     else:
         max_to_load = 10000000
-    test_X, test_y = data_io.load_data(test_files, SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B)
+    test_X, test_y = data_io.load_data(
+        test_files, opts.SPEC_TYPE, opts.LEARN_LOG, opts.CLASSNAME, opts.A, opts.B)
 
     # loading training data...
-    # print "WARING" * 10
     train_X, train_y = data_io.load_large_data(
-        SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=max_to_load)
+        opts.SPEC_TYPE, opts.LEARN_LOG, opts.CLASSNAME, opts.A, opts.B, max_to_load=max_to_load)
 
-    for idx in range(ENSEMBLE_MEMBERS):
-        logging_dir = data_io.base + 'predictions/%s/%d/%s/' % (RUN_TYPE, idx, CLASSNAME)
+    for idx in range(opts.ENSEMBLE_MEMBERS):
+        logging_dir = data_io.base + 'predictions/%s/%d/%s/' % (RUN_TYPE, idx, opts.CLASSNAME)
         train_helpers.force_make_dir(logging_dir)
         sys.stdout = ui.Logger(logging_dir + 'log.txt')
 
-        train_and_test(train_X, test_X, train_y, test_y, test_files,
-                logging_dir, CLASSNAME, HWW_X, HWW_Y, DO_AUGMENTATION,
-                LEARN_LOG, NUM_FILTERS, WIGGLE_ROOM, CONV_FILTER_WIDTH,
-                NUM_DENSE_UNITS, DO_BATCH_NORM, MAX_EPOCHS, LEARNING_RATE)
+        with open(logging_dir + 'network_opts.yaml', 'w') as f:
+            yaml.dump(opts, f, default_flow_style=False)
+
+        train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir, opts)
 
 
 if __name__ == '__main__':
-    params = dict(
+    opts = edict(dict(
         SPEC_TYPE = 'mel',
         ENSEMBLE_MEMBERS = 5,
 
@@ -167,16 +165,16 @@ if __name__ == '__main__':
         LEARNING_RATE = 0.001,
 
         CLASSNAME = class_to_use
-        )
-    params['B'] = 10.0 if params['CLASSNAME'] == 'biotic' else 2.00
-    params['A'] = 0.001 if params['CLASSNAME'] == 'biotic' else 0.025
+        ))
+    opts.B = 10.0 if opts.CLASSNAME == 'biotic' else 2.00
+    opts.A = 0.001 if opts.CLASSNAME == 'biotic' else 0.025
 
     TRAINING_DATA = 'large'
 
     print "Training data: ", TRAINING_DATA
-    for key, val in params.iteritems():
+    for key, val in opts.iteritems():
         print "   ", key.ljust(20), val
 
-    RUN_TYPE = 'ensemble_train_bigger_x_width'
+    RUN_TYPE = 'ensemble_train_tmp'
 
-    train_large_test_golden(RUN_TYPE=RUN_TYPE, **params)
+    train_large_test_golden(RUN_TYPE, opts)
