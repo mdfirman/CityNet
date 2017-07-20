@@ -1,28 +1,11 @@
-
-# coding: utf-8
-
-# In[ ]:
-
-# get_ipython().magic(u'load_ext autoreload')
-# get_ipython().magic(u'autoreload 2')
-# get_ipython().magic(u'matplotlib inline')
 import os
 import sys
 import numpy as np
-
-
-import cPickle as pickle
-import yaml
-import collections
 from tqdm import tqdm
 import time
-from scipy.ndimage.interpolation import zoom
 
 
-# # Find chronological ordering of the HDDs
-
-# In[ ]:
-
+# Find chronological ordering of the HDDs
 unordered_hdds = ['/media/michael/Elements/', '/media/michael/Elements1/', '/media/michael/Elements2/']
 ordered_hdds = [None, None, None]
 
@@ -38,9 +21,6 @@ print ordered_hdds
 
 
 # # Define all search locations
-
-# In[ ]:
-
 search_locations = [
     (0, ordered_hdds[0] + 'Fieldwork_Data/2013/'),
     (0, ordered_hdds[0] + 'Fieldwork_Data/2014/'),
@@ -49,33 +29,54 @@ search_locations = [
     (2, ordered_hdds[2] + 'Fieldwork_Data/2015/')
 ]
 
-
-# In[ ]:
-
 base_savedir = '/media/michael/SeagateData/alison_data/spectrograms/'
-
-
-# In[ ]:
 
 import classifier
 model = classifier.Classifier()
 
 
-# In[ ]:
+def proc_file(paths):
+    loadpath, savepath = paths
 
-def compute_spec(loadpath, savepath):
-    model.load_wav(loadpath, loadmethod='wavfile')
-    model.compute_spec()
+    try:
+        model.load_wav(loadpath, loadmethod='wavfile')
+    except ValueError:
+        with open('./failure_log.txt', 'w+') as f:
+            f.write(loadpath + "\n")
+        return
+
+    # dealing with stereo files
+    if len(model.wav.shape) == 2:
+        model.wav = model.wav[:, 0]
+
+    try:
+        model.compute_spec()
+    except ParameterError:
+        with open('./failure_log.txt', 'w+') as f:
+            f.write(loadpath + "\n")
+        return
+
     np.save(savepath, model.spec.astype(np.float16))
+
+
+from multiprocessing import Pool
 
 
 def batch_process_files(loaddir, fnames, savedir):
 
     # Inner loop
+    paths = []
     for fname in fnames:
+        if not fname.endswith('.wav'):
+            continue
+
         loadpath = loaddir + fname
         savepath = savedir + '/' + fname.replace('.wav', '.npy')
-        compute_spec(loadpath, savepath)
+        if not os.path.exists(savepath):
+            paths.append([loadpath, savepath])
+
+    p = Pool(4, maxtasksperchild=10)
+    p.map(proc_file, paths)
 
 
 # Loop over a load of hdds
@@ -89,8 +90,6 @@ for hd_idx, search_location in search_locations:
                           if 'BAT+' not in root and 'Random' not in root and fname.endswith('.wav')]
 
         if len(filtered_fnames):
-            endnow = 1
-            break
             all_fnames.extend(filtered_fnames)
 
             savedir = base_savedir + ('/%d/' % hd_idx) + root.split('Fieldwork_Data')[1]
@@ -98,63 +97,4 @@ for hd_idx, search_location in search_locations:
             if not os.path.exists(savedir):
                 os.makedirs(savedir)
 
-            tic = time.time()
-            batch_process_files(root + '/', filtered_fnames[:6], savedir)
-            print time.time() - tic
-        if endnow:
-            break
-    if endnow:
-        break
-
-
-print len(all_fnames)
-
-
-# In[ ]:
-
-savedir = base_savedir + ('/%d/' % hd_idx) + root.split('Fieldwork_Data')[1]
-
-if not os.path.exists(savedir):
-    os.makedirs(savedir)
-
-tic = time.time()
-batch_process_files(root + '/', filtered_fnames[:10], savedir)
-print time.time() - tic
-
-
-
-
-
-def proc_file(paths):
-    loadpath, savepath = paths
-    model.load_wav(loadpath, loadmethod='wavfile')
-    model.compute_spec()
-    np.save(savepath, model.spec.astype(np.float16))
-
-
-from multiprocessing import Pool
-
-def batch_process_files(loaddir, fnames, savedir):
-
-    # Inner loop
-    paths = []
-    for fname in fnames:
-        loadpath = loaddir + fname
-        savepath = savedir + fname.replace('.wav', '.npy')
-        paths.append([loadpath, savepath])
-
-    p = Pool(4)
-    p.map(proc_file, paths)
-    # for path in paths:
-    #     proc_file(path)
-
-
-tic = time.time()
-savedir = base_savedir + '/pooled/' + ('/%d/' % hd_idx) + root.split('Fieldwork_Data')[1]
-
-if not os.path.exists(savedir):
-    os.makedirs(savedir)
-
-batch_process_files(root + '/', filtered_fnames[:10], savedir)
-print (time.time() - tic)
-print (time.time() - tic) / 10 * 32223
+            batch_process_files(root + '/', filtered_fnames, savedir)
