@@ -3,33 +3,13 @@ import sys
 import numpy as np
 from tqdm import tqdm
 import time
+sys.path.append('..')
+sys.path.append('../..')
+import utils
 
+search_locations = utils.get_search_locations()
 
-# Find chronological ordering of the HDDs
-unordered_hdds = ['/media/michael/Elements/', '/media/michael/Elements1/', '/media/michael/Elements2/']
-ordered_hdds = [None, None, None]
-
-for hdd in unordered_hdds:
-    if os.path.exists(hdd + 'Fieldwork_Data/2013/') and os.path.exists(hdd + 'Fieldwork_Data/2014/'):
-        ordered_hdds[0] = hdd
-    elif os.path.exists(hdd + 'Fieldwork_Data/2014/') and os.path.exists(hdd + 'Fieldwork_Data/2015/'):
-        ordered_hdds[1] = hdd
-    elif os.path.exists(hdd + 'Fieldwork_Data/2015') and not os.path.exists(hdd + 'Fieldwork_Data/2014'):
-        ordered_hdds[2] = hdd
-
-print ordered_hdds
-
-
-# # Define all search locations
-search_locations = [
-    (0, ordered_hdds[0] + 'Fieldwork_Data/2013/'),
-    (0, ordered_hdds[0] + 'Fieldwork_Data/2014/'),
-    (1, ordered_hdds[1] + 'Fieldwork_Data/2014/'),
-    (1, ordered_hdds[1] + 'Fieldwork_Data/2015/'),
-    (2, ordered_hdds[2] + 'Fieldwork_Data/2015/')
-]
-
-base_savedir = '/media/michael/SeagateData/alison_data/spectrograms/'
+base_savedir = '/media/michael/SeagateData/alison_data/spectrograms_fixed/'
 
 import classifier
 model = classifier.Classifier()
@@ -51,7 +31,7 @@ def proc_file(paths):
 
     try:
         model.compute_spec()
-    except ParameterError:
+    except:
         with open('./failure_log.txt', 'w+') as f:
             f.write(loadpath + "\n")
         return
