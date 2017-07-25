@@ -12,11 +12,11 @@ import yaml
 
 search_locations = utils.get_search_locations()
 
-classname = 'anthrop'
+classname = 'biotic'
 extra = {'biotic': '', 'anthrop': '_anthrop'}[classname]
 best_member = {'biotic': 0, 'anthrop': 3}[classname]
 base_savedir = '/media/michael/SeagateData/alison_data/predictions_%s/' % classname
-spec_basedir = '/media/michael/SeagateData/alison_data/spectrograms/'
+spec_basedir = '/media/michael/SeagateData/alison_data/spectrograms_fixed/'
 
 
 models_dir = '/media/michael/Engage/data/audio/alison_data/golden_set/predictions/ensemble_train%s/%d/%s/' % (
@@ -33,7 +33,11 @@ def proc_file(paths):
 
     try:
         model.spec = np.load(spec_loadpath)
-        # model.spec
+
+        # todo - need to think about this a bit
+        model.spec = np.log(opts.A + opts.B * model.spec)
+        model.spec = model.spec - np.median(model.spec, axis=1, keepdims=True)
+
         preds = model.classify()
         np.save(savepath, preds.astype(np.float16))
     #
@@ -43,7 +47,7 @@ def proc_file(paths):
     #         f.write(loadpath + "\n")
     #     return
     except:
-        with open('./classification_failure_log.txt', 'w+') as f:
+        with open('./%s_classification_failure_log.txt' % classname, 'w+') as f:
             f.write(spec_loadpath + "\n")
         return
 
