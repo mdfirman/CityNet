@@ -1,5 +1,7 @@
 window.onload = function initMap() {
   var uluru = {lat: 51.529517, lng: -0.058284};
+  console.log("sds")
+  console.log(JSON.parse('style.json'))
   var styledMapType = new google.maps.StyledMapType(
     [
       {
