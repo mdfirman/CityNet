@@ -26,7 +26,7 @@ import lasagne.layers
 
 # Which parameters are used in the network generation?
 net_params = ['DO_BATCH_NORM', 'NUM_FILTERS', 'NUM_DENSE_UNITS',
-              'CONV_FILTER_WIDTH', 'WIGGLE_ROOM', 'HWW', 'LEARN_LOG', 'SPEC_HEIGHT']
+              'CONV_FILTER_WIDTH', 'WIGGLE_ROOM', 'HWW_X', 'LEARN_LOG']
 
 
 def force_make_dir(dirpath):
@@ -200,7 +200,7 @@ class LearnLogLayer(lasagne.layers.Layer):
         return (input_shape[0], self.num_repeats, input_shape[2], input_shape[3])
 
 
-def create_net(SPEC_HEIGHT, HWW, LEARN_LOG, NUM_FILTERS,
+def create_net(SPEC_HEIGHT, HWW_X, LEARN_LOG, NUM_FILTERS,
     WIGGLE_ROOM, CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM):
 
     if not DO_BATCH_NORM:
@@ -212,7 +212,7 @@ def create_net(SPEC_HEIGHT, HWW, LEARN_LOG, NUM_FILTERS,
 
     # main input layer, then logged
     net = {}
-    net['input'] = InputLayer((None, channels, SPEC_HEIGHT, HWW*2), name='input')
+    net['input'] = InputLayer((None, channels, SPEC_HEIGHT, HWW_X*2), name='input')
 
     if LEARN_LOG:
 

@@ -18,7 +18,7 @@ import train_helpers
 import data_io
 from ml_helpers import ui
 
-small = False
+small = True
 
 
 def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir, opts, TEST_FOLD=99,
@@ -138,6 +138,7 @@ def train_large_test_golden(RUN_TYPE, opts):
         train_helpers.force_make_dir(logging_dir)
         sys.stdout = ui.Logger(logging_dir + 'log.txt')
 
+        opts.height = train_X[0].shape[0]
         with open(logging_dir + 'network_opts.yaml', 'w') as f:
             yaml.dump(opts, f, default_flow_style=False)
 
@@ -175,6 +176,6 @@ if __name__ == '__main__':
     for key, val in opts.iteritems():
         print "   ", key.ljust(20), val
 
-    RUN_TYPE = 'ensemble_train_tmp'
+    RUN_TYPE = 'ensemble_train_tmp_' + class_to_use
 
     train_large_test_golden(RUN_TYPE, opts)
