@@ -34,86 +34,44 @@ window.onload = function initMap() {
     map.mapTypes.set('styled_map', styledMapType);
     map.setMapTypeId('styled_map');
 
-    //Associate the styled map with the MapTypeId and set it to display.
-    map.mapTypes.set('styled_map', styledMapType);
-    map.setMapTypeId('styled_map');
-
-    // Following blocks add the marker for the bethanl green site
-    var marker = new google.maps.Marker({
-      position: london_centre,
-      map: map,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 5
-      },
-    });
-
-    marker.addListener('click', function() {
-      // map.setZoom(12);
-      // map.setCenter(marker.getPosition());
-      $('#myModal').modal('show');
-    });
-
-    google.maps.event.addListener(marker, 'mouseover', function() {
-      this.setIcon({
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 8
-      });
-    });
-    google.maps.event.addListener(marker, 'mouseout', function() {
-      this.setIcon({
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 5
-      });
-    });
-
-
-
-    // console.log(csv)
-    Papa.parse("assets/tmp_csv.csv", {
+    Papa.parse("assets/sites_info.csv", {
     	download: true,
+      dynamicTyping: true,
     	complete: function(results) {
-    		console.log(results);
-    		console.log(results.data.length);
-        for (i=0; i<results.data.length; i++)
+        for (i=0; i<results.data.length - 1; i++)
         {
-          console.log(results.data[i])
-        }
+          icon_url = './assets/charts/' + results.data[i][0] + '.png'
 
+          var marker = new google.maps.Marker({
+            position: {lat: results.data[i][1], lng: results.data[i][2]},
+            map: map,
+            icon: {
+              url: './assets/charts/' + results.data[i][0] + '.png',
+              scaledSize: new google.maps.Size(25, 25),
+            },
+            icon_path: './assets/charts/' + results.data[i][0] + '.png'
+          });
+
+          google.maps.event.addListener(marker, 'mouseover', function() {
+            this.setIcon({
+              url: this.icon_path,
+              scaledSize: new google.maps.Size(35, 35),
+            });
+          });
+
+          google.maps.event.addListener(marker, 'mouseout', function() {
+            this.setIcon({
+              url: this.icon_path,
+              scaledSize: new google.maps.Size(20, 20),
+            });
+          });
+
+          marker.addListener('click', function() {
+            $('#myModal').modal('show');
+          });
+        }
     	}
     });
-
-    // add the markers to the main map
-    for (i=0; i < 50; i++)
-    {
-      var marker = new google.maps.Marker({
-        position: {lat: 51.277 + Math.random() * 0.35, lng: -0.4593 + Math.random() * 0.8},
-        map: map,
-        icon: {
-            url: './assets/charts/' + i + '.png',
-            scaledSize: new google.maps.Size(25, 25), // scaled size
-        },
-      });
-      //
-      // google.maps.event.addListener(marker, 'mouseover', function() {
-      //   this.setIcon({
-      //     path: google.maps.SymbolPath.CIRCLE,
-      //     scale: 8
-      //   });
-      // });
-      // google.maps.event.addListener(marker, 'mouseout', function() {
-      //   this.setIcon({
-      //     path: google.maps.SymbolPath.CIRCLE,
-      //     scale: 5
-      //   });
-      // });
-      //
-      // marker.addListener('click', function() {
-      //   map.setZoom(12);
-      //   map.setCenter(marker.getPosition());
-      //   $('#myModal').modal('show');
-      // });
-    }
 
     var map_inset = new google.maps.Map(document.getElementById('map_inset'), {
       center: london_centre,
