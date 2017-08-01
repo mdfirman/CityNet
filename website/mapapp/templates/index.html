@@ -1,0 +1,83 @@
+{% extends "_base.html" %}
+{% block body %}
+
+<div id="myModal" class="modal fade" role="dialog">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h3 class="modal-title" id="main-modal-title">Bethnal Green Nature Reserve</h3>
+      </div>
+      <div class="modal-body">
+
+        <h4>Time of day predictions</h4>
+        <div id="minute-data" style="height: 300px;"></div>
+        <script>
+          new Chartkick.LineChart("minute-data", [{"data": {"0000-00-00T06:00:00.000Z": "0.620196", "0000-00-00T20:30:00.000Z": "0.790156", "0000-00-00T19:00:00.000Z": "0.888622", "0000-00-00T06:30:00.000Z": "0.729119", "0000-00-00T12:30:00.000Z": "0.799494", "0000-00-00T09:30:00.000Z": "0.767389", "0000-00-00T22:30:00.000Z": "0.873739", "0000-00-00T15:30:00.000Z": "0.789358", "0000-00-00T04:30:00.000Z": "0.236719", "0000-00-00T17:00:00.000Z": "0.852331", "0000-00-00T23:30:00.000Z": "0.827514", "0000-00-00T04:00:00.000Z": "0.138325", "0000-00-00T16:30:00.000Z": "0.825144", "0000-00-00T03:00:00.000Z": "0.45707", "0000-00-00T15:00:00.000Z": "0.840493", "0000-00-00T23:00:00.000Z": "0.870065", "0000-00-00T07:00:00.000Z": "0.749402", "0000-00-00T16:00:00.000Z": "0.830425", "0000-00-00T05:00:00.000Z": "0.337477", "0000-00-00T03:30:00.000Z": "0.300276", "0000-00-00T17:30:00.000Z": "0.842763", "0000-00-00T10:30:00.000Z": "0.771307", "0000-00-00T19:30:00.000Z": "0.856931", "0000-00-00T11:00:00.000Z": "0.805777", "0000-00-00T18:30:00.000Z": "0.847086", "0000-00-00T11:30:00.000Z": "0.772721", "0000-00-00T05:30:00.000Z": "0.421132", "0000-00-00T21:30:00.000Z": "0.889565", "0000-00-00T02:30:00.000Z": "0.469605", "0000-00-00T18:00:00.000Z": "0.850571", "0000-00-00T09:00:00.000Z": "0.78406", "0000-00-00T13:30:00.000Z": "0.792764", "0000-00-00T22:00:00.000Z": "0.889962", "0000-00-00T08:30:00.000Z": "0.749237", "0000-00-00T00:00:00.000Z": "0.809361", "0000-00-00T13:00:00.000Z": "0.809462", "0000-00-00T21:00:00.000Z": "0.831533", "0000-00-00T01:30:00.000Z": "0.622892", "0000-00-00T08:00:00.000Z": "0.789292", "0000-00-00T14:00:00.000Z": "0.797703", "0000-00-00T02:00:00.000Z": "0.535143", "0000-00-00T10:00:00.000Z": "0.805328", "0000-00-00T01:00:00.000Z": "0.72875", "0000-00-00T12:00:00.000Z": "0.799728", "0000-00-00T14:30:00.000Z": "0.825424", "0000-00-00T00:30:00.000Z": "0.762335", "0000-00-00T20:00:00.000Z": "0.831706", "0000-00-00T07:30:00.000Z": "0.773386"}, "name": "anthrop"}, {"data": {"0000-00-00T06:00:00.000Z": "0.641639", "0000-00-00T20:30:00.000Z": "0.536207", "0000-00-00T19:00:00.000Z": "0.536572", "0000-00-00T06:30:00.000Z": "0.623635", "0000-00-00T12:30:00.000Z": "0.600736", "0000-00-00T09:30:00.000Z": "0.658368", "0000-00-00T22:30:00.000Z": "0.146241", "0000-00-00T15:30:00.000Z": "0.571089", "0000-00-00T04:30:00.000Z": "0.902218", "0000-00-00T17:00:00.000Z": "0.490731", "0000-00-00T23:30:00.000Z": "0.104854", "0000-00-00T04:00:00.000Z": "0.961035", "0000-00-00T16:30:00.000Z": "0.533966", "0000-00-00T03:00:00.000Z": "0.158219", "0000-00-00T15:00:00.000Z": "0.475989", "0000-00-00T23:00:00.000Z": "0.148783", "0000-00-00T07:00:00.000Z": "0.611957", "0000-00-00T16:00:00.000Z": "0.533421", "0000-00-00T05:00:00.000Z": "0.750435", "0000-00-00T03:30:00.000Z": "0.744347", "0000-00-00T17:30:00.000Z": "0.525507", "0000-00-00T10:30:00.000Z": "0.610779", "0000-00-00T19:30:00.000Z": "0.54605", "0000-00-00T11:00:00.000Z": "0.570541", "0000-00-00T18:30:00.000Z": "0.519085", "0000-00-00T11:30:00.000Z": "0.586204", "0000-00-00T05:30:00.000Z": "0.691424", "0000-00-00T21:30:00.000Z": "0.228231", "0000-00-00T02:30:00.000Z": "0.0910319", "0000-00-00T18:00:00.000Z": "0.556674", "0000-00-00T09:00:00.000Z": "0.604827", "0000-00-00T13:30:00.000Z": "0.591648", "0000-00-00T22:00:00.000Z": "0.154438", "0000-00-00T08:30:00.000Z": "0.680331", "0000-00-00T00:00:00.000Z": "0.106189", "0000-00-00T13:00:00.000Z": "0.548255", "0000-00-00T21:00:00.000Z": "0.47506", "0000-00-00T01:30:00.000Z": "0.113197", "0000-00-00T08:00:00.000Z": "0.63984", "0000-00-00T14:00:00.000Z": "0.561651", "0000-00-00T02:00:00.000Z": "0.0943548", "0000-00-00T10:00:00.000Z": "0.605469", "0000-00-00T01:00:00.000Z": "0.125536", "0000-00-00T12:00:00.000Z": "0.561303", "0000-00-00T14:30:00.000Z": "0.514904", "0000-00-00T00:30:00.000Z": "0.107059", "0000-00-00T20:00:00.000Z": "0.533715", "0000-00-00T07:30:00.000Z": "0.627089"}, "name": "biotic"}]);
+        </script>
+        <hr>
+
+        <h4>Sample audio</h4>
+        <audio controls id="audio" >
+          <source id="audio_source" src="assets/sites/audio/CM167NP-3527_20150912_053000.wav" type="audio/wav">
+          Your browser does not support the audio element.
+        </audio>
+
+        <h4>Site Information</h4>
+        <p id="site-information">Information about this site. Copied from their site: The Phytology medicinal field is situated within the north west corner of the Bethnal Green Nature Reserve. The area’s rural past is now invisible through most of the borough. The Bethnal Green Nature Reserve is a rare example of a place where it is still possible to have a sense of continued history</p>
+
+        <div class="row">
+          <div class="col-sm-6">.<img src="assets/2015-05-16 14.22.29.webp" width="100%"></div>
+          <div class="col-sm-6">.<div id="map_inset"></div></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="over_map">
+  Hello
+</div>
+
+<div id="map"></div>
+
+<div class="container" id="panel_container">
+  <div class="row">
+    <!-- <div class="col-sm-2"></div> -->
+    <div class="col-sm-8 col-sm-offset-4">
+      <div class="panel panel-default">
+        <!-- <div class="panel-heading"> <strong class="">Select Location</strong>
+      	</div> -->
+
+				<div class="panel-body">
+          <p>Results of the algorithm. Click on a marker to get the information about that site.</p>
+          <!-- <h3>Legend</h3> -->
+          <p>
+           The heights of the bars on the markers show the average measured sound level at that site:
+          </p>
+          <p><b>
+          Biotic &rArr; &nbsp;
+          <img src="assets/sites/charts/E140EY.png" width=30px></img>
+
+          &nbsp;  &lArr; Anthropogenic
+        </b>
+        </p>
+          <!-- <p><a href="http://bootply.com" class="btn btn-primary btn-lg">Learn More <i class="glyphicon glyphicon-chevron-right"></i></a> -->
+          </p>
+      	</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- <script async defer
+src="https://maps.googleapis.com/maps/api/js?callback=initMap">
+</script> -->
+
+
+
+{% endblock %}

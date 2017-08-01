@@ -1,8 +1,8 @@
 #map{
   position: absolute;
-  top: 100px;
+  top: 0px;
   left: 0;
-  bottom: 100px;
+  bottom: 0px;
   right: 0;
 }
 #map_inset{
@@ -11,4 +11,28 @@
   left: 0;
   height: 350px;
   width: 100%;
+}
+#over_map {
+  position: fixed;
+  height: 40px;
+  bottom: 30px;
+  opacity: 1;
+  left: 50%;
+  margin-left: -125px;
+  width: 250px;
+  z-index: 99;
+  background-color: white;
+  text-align: center;
+}
+#panel_container {
+  position: fixed;
+  /*height: 40px;*/
+  bottom: 10px;
+  opacity: 1;
+  /*left: 50%;*/
+  /*margin-left: -125px;
+  width: 250px;*/
+  z-index: 99;
+  /*background-color: white;*/
+  text-align: center;
 }

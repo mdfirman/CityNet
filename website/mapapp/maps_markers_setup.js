@@ -13,7 +13,7 @@ window.onload = function initMap() {
     xobj.send(null);
   }
 
-  var london_centre = {lat: 51.529517, lng: -0.058284};
+  var london_centre = {lat: 51.489517, lng: -0.124};
 
   //$("#myModel").load("./assets/sample_site.html");
 
@@ -25,7 +25,7 @@ window.onload = function initMap() {
     });
 
     var map = new google.maps.Map(document.getElementById('map'), {
-      zoom: 10,
+      zoom: 11,
       center: london_centre,
       mapTypeControlOptions: {
         mapTypeIds: ['satellite', 'styled_map']
@@ -36,44 +36,66 @@ window.onload = function initMap() {
     map.mapTypes.set('styled_map', styledMapType);
     map.setMapTypeId('styled_map');
 
+    var sz = 35;
+
     Papa.parse("assets/sites/sites_info.csv", {
     	download: true,
       dynamicTyping: true,
     	complete: function(results) {
         for (i=0; i<results.data.length - 1; i++)
         {
-          icon_url = './assets/sites/charts/' + results.data[i][0] + '.png'
+          var icon_url = './assets/sites/charts/' + results.data[i][0] + '.png';
 
           var marker = new google.maps.Marker({
             position: {lat: results.data[i][1], lng: results.data[i][2]},
             map: map,
             icon: {
-              url: './assets/charts/' + results.data[i][0] + '.png',
-              scaledSize: new google.maps.Size(25, 25),
+              url: icon_url,
+              scaledSize: new google.maps.Size(sz, sz),
             },
-            icon_path: './assets/charts/' + results.data[i][0] + '.png',
-            postcode: ""+results.data[i][0],
+            icon_path: icon_url,
+            postcode: results.data[i][0],
+            wav_path: results.data[i][3],
           });
-
-          console.log(results.data[i][0])
 
           google.maps.event.addListener(marker, 'mouseover', function() {
             this.setIcon({
               url: this.icon_path,
-              scaledSize: new google.maps.Size(35, 35),
+              scaledSize: new google.maps.Size(sz+10, sz+10),
             });
           });
 
           google.maps.event.addListener(marker, 'mouseout', function() {
             this.setIcon({
               url: this.icon_path,
-              scaledSize: new google.maps.Size(20, 20),
+              scaledSize: new google.maps.Size(sz, sz),
             });
           });
 
+          // When marer clicked, the modal is updated then shown
           marker.addListener('click', function() {
-            console.log("Jere")
+
             $('#main-modal-title').html(this.postcode)
+
+            var chart = Chartkick.charts["minute-data"];
+            chart.updateData( [{"data":
+              {"0000-00-00T06:00:00.000Z": "0.620196",
+              "0000-00-00T20:30:00.000Z": "0.790156",
+              "0000-00-00T19:00:00.000Z": "0.888622",
+              "0000-00-00T06:30:00.000Z": "0.729119",
+              "0000-00-00T12:30:00.000Z": "0.799494",
+              "0000-00-00T09:30:00.000Z": "0.767389",
+              "0000-00-00T22:30:00.000Z": "0.873739",
+              "0000-00-00T15:30:00.000Z": "0.789358",
+              "0000-00-00T04:30:00.000Z": "0.236719" } } ] );
+
+            var myaudio = document.getElementById('audio_source');
+            myaudio.src = 'assets/sites/audio/' + this.wav_path;
+
+            var audio_container = document.getElementById('audio');
+            audio_container.pause()
+            audio_container.load()
+
             $('#myModal').modal('show');
           });
         }
@@ -99,6 +121,12 @@ window.onload = function initMap() {
     //
 
   });
+
+
+  $('#myModal').on('hidden.bs.modal', function () {
+    var audio_container = document.getElementById('audio');
+    audio_container.pause()
+  })
 
 
 }

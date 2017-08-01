@@ -1,0 +1,72 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="js/jquery.csv.js"></script>
+  <script src="js/papaparse.js"></script>
+  <script src="maps_markers_setup.js"></script>
+
+  <script src="js/chartkick.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.bundle.js"></script>
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=places&sensor=false"></script>
+
+    <script>
+     $(function() {
+        $('#navbar li').click(function() {
+           //$('#navbar li').removeClass();
+           console.log("in")
+           $($(this).addClass('active'));
+        });
+     });
+  </script>
+
+  <title>London Urban Soundscapes</title>
+
+</head>
+
+<body>
+  <nav class="navbar navbar-default navbar-fixed-top active">
+    <div class="container">
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <img class="navbar-brand" src="../assets/favicon/iconmonstr-microphone-4.svg" width="50" height="50">
+        <a class="navbar-brand" href="/">London Urban Soundscapes</a>
+      </div>
+
+      <div id="navbar" class="navbar-collapse collapse active">
+        <ul class="nav navbar-nav">
+          <li>
+            <a href="/index.html">Home</a>
+          </li>
+          <li>
+            <a href="/">Map view</a>
+          </li>
+          <li>
+            <a href="/">About</a>
+          </li>
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+          <li>
+            <a href="/">Contact</a
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav> -->
+
+  {% block body %}
+  {% endblock %}
+
+</body>
+
+</html>
