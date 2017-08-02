@@ -57,6 +57,7 @@ window.onload = function initMap() {
             postcode: results.data[i][0],
             wav_path: results.data[i][3],
             im_path: "assets/sites/ims/" + results.data[i][0] + ".jpg",
+            chartdata_path: "assets/sites/chartdata/" + results.data[i][0] + ".json",
             description: results.data[i][4],
           });
 
@@ -77,20 +78,15 @@ window.onload = function initMap() {
           // When marer clicked, the modal is updated then shown
           marker.addListener('click', function() {
 
-            $('#main-modal-title').html(this.description)
+            $('#main-modal-title').html(this.description);
             // $('#main-modal-desc').html(this.postcode)
 
             var chart = Chartkick.charts["minute-data"];
-            chart.updateData( [{"data":
-              {"0000-00-00T06:00:00.000Z": "0.620196",
-              "0000-00-00T20:30:00.000Z": "0.790156",
-              "0000-00-00T19:00:00.000Z": "0.888622",
-              "0000-00-00T06:30:00.000Z": "0.729119",
-              "0000-00-00T12:30:00.000Z": "0.799494",
-              "0000-00-00T09:30:00.000Z": "0.767389",
-              "0000-00-00T22:30:00.000Z": "0.873739",
-              "0000-00-00T15:30:00.000Z": "0.789358",
-              "0000-00-00T04:30:00.000Z": "0.236719" } } ] );
+            chart.updateData(this.chartdata_path);
+            chart.redraw();
+            // $.getJSON(this.chartdata_path, function(json) {
+            //     console.log(this.chartdata_path);
+            // });
 
             var myaudio = document.getElementById('audio_source');
             myaudio.src = 'assets/sites/audio/' + this.wav_path;
@@ -100,7 +96,6 @@ window.onload = function initMap() {
             audio_container.load()
 
             document.getElementById('site_image').src = this.im_path
-            console.log(this.im_path)
 
             $('#myModal').modal('show');
           });
