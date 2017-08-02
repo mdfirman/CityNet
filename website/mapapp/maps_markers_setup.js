@@ -56,6 +56,8 @@ window.onload = function initMap() {
             icon_path: icon_url,
             postcode: results.data[i][0],
             wav_path: results.data[i][3],
+            im_path: "assets/sites/ims/" + results.data[i][0] + ".jpg",
+            description: results.data[i][4],
           });
 
           google.maps.event.addListener(marker, 'mouseover', function() {
@@ -75,7 +77,8 @@ window.onload = function initMap() {
           // When marer clicked, the modal is updated then shown
           marker.addListener('click', function() {
 
-            $('#main-modal-title').html(this.postcode)
+            $('#main-modal-title').html(this.description)
+            // $('#main-modal-desc').html(this.postcode)
 
             var chart = Chartkick.charts["minute-data"];
             chart.updateData( [{"data":
@@ -95,6 +98,9 @@ window.onload = function initMap() {
             var audio_container = document.getElementById('audio');
             audio_container.pause()
             audio_container.load()
+
+            document.getElementById('site_image').src = this.im_path
+            console.log(this.im_path)
 
             $('#myModal').modal('show');
           });
