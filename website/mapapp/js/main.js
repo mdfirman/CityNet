@@ -15,8 +15,6 @@ window.onload = function initMap() {
 
   var london_centre = {lat: 51.489517, lng: -0.124};
 
-  //$("#myModel").load("./assets/sample_site.html");
-
   // We create the map in the json loader callback, beacuse javascript is strange
   loadJSON('style.json', function(response) {
     loaded_json = JSON.parse(response);
