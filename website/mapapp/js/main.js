@@ -1,4 +1,4 @@
-window.onload = function initMap() {
+function initMap() {
 
   function loadJSON(fname, callback) {
 
@@ -15,8 +15,20 @@ window.onload = function initMap() {
 
   var london_centre = {lat: 51.489517, lng: -0.124};
 
+  var map_inset = new google.maps.Map(document.getElementById('map_inset'), {
+    center: london_centre,
+    mapTypeControlOptions: {
+      mapTypeIds: ['satellite']
+    },
+    zoom: 18,
+    mapTypeId: 'satellite',
+    disableDefaultUI: true,
+    scrollwheel: false,
+    draggable: false
+  });
+
   // We create the map in the json loader callback, beacuse javascript is strange
-  loadJSON('style.json', function(response) {
+  loadJSON('assets/maps_style.json', function(response) {
     loaded_json = JSON.parse(response);
     var styledMapType = new google.maps.StyledMapType(loaded_json, {
       name: 'Map'
@@ -27,12 +39,17 @@ window.onload = function initMap() {
       center: london_centre,
       mapTypeControlOptions: {
         mapTypeIds: ['satellite', 'styled_map']
-      }
+      },
     });
 
     //Associate the styled map with the MapTypeId and set it to display.
     map.mapTypes.set('styled_map', styledMapType);
     map.setMapTypeId('styled_map');
+
+    var inset_marker = new google.maps.Marker({
+      position: this.position,
+      map: map_inset,
+    });
 
     var sz = 35;
 
@@ -57,6 +74,7 @@ window.onload = function initMap() {
             im_path: "assets/sites/ims/" + results.data[i][0] + ".jpg",
             chartdata_path: "assets/sites/chartdata/" + results.data[i][0] + ".json",
             description: results.data[i][4],
+            results_data: results.data[i]
           });
 
           google.maps.event.addListener(marker, 'mouseover', function() {
@@ -80,11 +98,9 @@ window.onload = function initMap() {
             // $('#main-modal-desc').html(this.postcode)
 
             var chart = Chartkick.charts["minute-data"];
+            console.log(this.chartdata_path)
             chart.updateData(this.chartdata_path);
             chart.redraw();
-            // $.getJSON(this.chartdata_path, function(json) {
-            //     console.log(this.chartdata_path);
-            // });
 
             var myaudio = document.getElementById('audio_source');
             myaudio.src = 'assets/sites/audio/' + this.wav_path;
@@ -92,6 +108,18 @@ window.onload = function initMap() {
             var audio_container = document.getElementById('audio');
             audio_container.pause()
             audio_container.load()
+            //
+            // console.log(this.position)
+            // google.maps.event.trigger(map_inset, "resize");
+            inset_marker.setPosition(this.position);
+            // google.maps.event.trigger(map_inset, "resize");
+            map_inset.setCenter(this.position);
+            // google.maps.event.trigger(map_inset, "resize");
+            // map_inset.setCenter({lat: this.results_data[1] + 0.0002, lng: this.results_data[2] - 0.0002});
+
+
+            // google.maps.event.trigger(map_inset, "resize");
+
 
             document.getElementById('site_image').src = this.im_path
 
@@ -101,31 +129,29 @@ window.onload = function initMap() {
     	}
     });
     //
-    // var map_inset = new google.maps.Map(document.getElementById('map_inset'), {
-    //   center: london_centre,
-    //   zoom: 18,
-    //   mapTypeId: 'satellite',
-    //   disableDefaultUI: true,
-    //   scrollwheel: false,
-    //   draggable: false
-    // });
+
     //
     // // Resize map to show on a Bootstrap's modal
     // $('#myModal').on('shown.bs.modal', function() {
     //   var currentCenter = map_inset.getCenter();  // Get current center before resizing
     //   google.maps.event.trigger(map_inset, "resize");
     //   // console.log(london_centre)
-    //   map_inset.setCenter(currentCenter); // Re-set previous center
+    //    // Re-set previous center
     // });
     //
 
   });
-
 
   $('#myModal').on('hidden.bs.modal', function () {
     var audio_container = document.getElementById('audio');
     audio_container.pause()
   })
 
+  $("#myModal").on("shown.bs.modal", function () {
+    google.maps.event.trigger(map_inset, "resize");
+  });
 
-}
+
+};
+
+google.maps.event.addDomListener(window, "load", initMap);

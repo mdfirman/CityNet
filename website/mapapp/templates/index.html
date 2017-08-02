@@ -22,6 +22,7 @@
               colors: ["#1b9e77", "#d95f02"],
           };
           new Chartkick.LineChart("minute-data", data, options);
+          console.log("loaded")
         </script>
         <hr>
 
@@ -32,13 +33,16 @@
         </audio>
 
         <h4>Site Information</h4>
-        <p id="site-information">Information about this site. Copied from their site: The Phytology medicinal field is situated within the north west corner of the Bethnal Green Nature Reserve. The area’s rural past is now invisible through most of the borough. The Bethnal Green Nature Reserve is a rare example of a place where it is still possible to have a sense of continued history</p>
+        <p id="site-information">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+        </p>
 
         <div class="row">
-          <div class="col-sm-6">.<img id="site_image"  width="100%"></div>
-          <div class="col-sm-6">.<div id="map_inset"></div></div>
+          <div class="col-md-5"><img id="site_image" width="100%"></img></div>
+          <div class="col-md-5"><div id="map_inset"></div></div>
         </div>
       </div>
+
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
       </div>
@@ -54,11 +58,9 @@
 
 <div class="container" id="panel_container">
   <div class="row">
-    <!-- <div class="col-sm-2"></div> -->
+
     <div class="col-sm-8 col-sm-offset-4">
       <div class="panel panel-default">
-        <!-- <div class="panel-heading"> <strong class="">Select Location</strong>
-      	</div> -->
 
 				<div class="panel-body">
           <p>Results of the algorithm. Click on a marker to get the information about that site.</p>
@@ -82,10 +84,9 @@
 </div>
 
 
-<!-- <script async defer
-src="https://maps.googleapis.com/maps/api/js?callback=initMap">
-</script> -->
+<script async defer src="js/main.js">
+</script>
 
-
+<!-- <script src="js/main.js"></script> -->
 
 {% endblock %}
