@@ -38,7 +38,7 @@
         </p>
 
         <div class="row">
-          <div class="col-md-5"><img id="site_image" width="100%"></img></div>
+          <div class="col-md-5"><img id="site_image" width="100%"></div>
           <div class="col-md-5"><div id="map_inset"></div></div>
         </div>
       </div>
@@ -50,33 +50,35 @@
   </div>
 </div>
 
-<div id="over_map">
-  Hello
-</div>
-
 <div id="map"></div>
 
 <div class="container" id="panel_container">
   <div class="row">
-
-    <div class="col-sm-8 col-sm-offset-4">
-      <div class="panel panel-default">
+     <!-- class="col-sm-8 col-sm-offset-4"> -->
+    <div>
+      <div class="panel panel-default" id="info-panel">
+        <div class="panel-heading" id="panel-heading">
+          <h3 class="panel-title"><b>Legend</b></h3>
+          <span class="pull-right clickable">
+            &nbsp;<emph id="showhide">Hide</emph> &nbsp;
+            <i class="glyphicon glyphicon-chevron-down"></i>
+          </span>
+        </div>
 
 				<div class="panel-body">
-          <p>Results of the algorithm. Click on a marker to get the information about that site.</p>
-          <!-- <h3>Legend</h3> -->
+
           <p>
-           The heights of the bars on the markers show the average measured sound level at that site:
+           The heights of the bars show the average measured sound level:
           </p>
           <p><b>
           <a href="">[?]</a>&nbsp; Biotic &rArr; &nbsp;
-          <img src="assets/sites/charts/E140EY.png" width=30px></img>
+          <img src="assets/sites/charts/E140EY.png" width=30px>
 
           &nbsp;  &lArr; Anthropogenic <a href="">[?]</a>&nbsp;
         </b>
         </p>
+        <p>Click on a marker to get site information.</p>
           <!-- <p><a href="http://bootply.com" class="btn btn-primary btn-lg">Learn More <i class="glyphicon glyphicon-chevron-right"></i></a> -->
-          </p>
       	</div>
       </div>
     </div>

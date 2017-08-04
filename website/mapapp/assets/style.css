@@ -27,6 +27,9 @@
 #panel_container {
   position: fixed;
   /*height: 40px;*/
+  width: 350px;
+  left: calc(50% - 175px);
+
   bottom: 10px;
   opacity: 1;
   /*left: 50%;*/
@@ -35,4 +38,31 @@
   z-index: 99;
   /*background-color: white;*/
   text-align: center;
+}
+.panel-heading span {
+	margin-top: -20px;
+	font-size: 15px;
+}
+.panel-heading {
+	min-width: 100%;
+}
+
+.info-panel {
+  min-width: 100%;
+}
+#container-fluid {
+  margin-right: auto;
+  margin-left: auto;
+  max-width: 650px; /* or 950px */
+}
+body
+{
+  padding-top: 70px;
+}
+#myalert {
+    /*color: #31708F; DEE6FA  5782BD*/
+    /*http://paletton.com/#uid=13E0u0kaaUL00++54ZkeNNwiYCS*/
+    background-color: #DEE6FA;
+    border-color: #A9C6EE;
+    color: #5782BD;
 }

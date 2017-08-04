@@ -67,6 +67,7 @@ function initMap() {
             icon: {
               url: icon_url,
               scaledSize: new google.maps.Size(sz, sz),
+              anchor: new google.maps.Point(sz/2.0, sz/2.0),
             },
             icon_path: icon_url,
             postcode: results.data[i][0],
@@ -81,6 +82,7 @@ function initMap() {
             this.setIcon({
               url: this.icon_path,
               scaledSize: new google.maps.Size(sz+10, sz+10),
+              anchor: new google.maps.Point((sz+10)/2.0, (sz+10)/2.0),
             });
           });
 
@@ -88,6 +90,7 @@ function initMap() {
             this.setIcon({
               url: this.icon_path,
               scaledSize: new google.maps.Size(sz, sz),
+              anchor: new google.maps.Point(sz/2.0, sz/2.0),
             });
           });
 
@@ -111,10 +114,12 @@ function initMap() {
             //
             // console.log(this.position)
             // google.maps.event.trigger(map_inset, "resize");
+            // google.maps.event.trigger(map_inset, "resize");
+            $('#myModal').modal('show');
+            google.maps.event.trigger(map_inset, "resize");
             inset_marker.setPosition(this.position);
-            // google.maps.event.trigger(map_inset, "resize");
             map_inset.setCenter(this.position);
-            // google.maps.event.trigger(map_inset, "resize");
+
             // map_inset.setCenter({lat: this.results_data[1] + 0.0002, lng: this.results_data[2] - 0.0002});
 
 
@@ -123,7 +128,6 @@ function initMap() {
 
             document.getElementById('site_image').src = this.im_path
 
-            $('#myModal').modal('show');
           });
         }
     	}
@@ -147,11 +151,32 @@ function initMap() {
     audio_container.pause()
   })
 
+
   $("#myModal").on("shown.bs.modal", function () {
+    var currentCenter = map_inset.getCenter();
     google.maps.event.trigger(map_inset, "resize");
+    map_inset.setCenter(currentCenter);
   });
+
 
 
 };
 
 google.maps.event.addDomListener(window, "load", initMap);
+
+
+$(document).on('click', '.panel-heading span.clickable', function(e){
+    var $this = $(this);
+	if(!$this.hasClass('panel-collapsed')) {
+		$this.parents('.panel').find('.panel-body').slideUp();
+		$this.addClass('panel-collapsed');
+		$this.find('i').removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-up');
+    document.getElementById("showhide").innerHTML =  "Show"
+	} else {
+		$this.parents('.panel').find('.panel-body').slideDown();
+		$this.removeClass('panel-collapsed');
+		$this.find('i').removeClass('glyphicon-chevron-up').addClass('glyphicon-chevron-down');
+    // $(".showhide").html = "Show";
+    document.getElementById("showhide").innerHTML =  "Hide"
+	}
+})
