@@ -1,3 +1,9 @@
+body
+{
+  padding-top: 70px;
+  font-size: 12pt;
+}
+
 #map{
   position: absolute;
   top: 0px;
@@ -5,6 +11,7 @@
   bottom: 0px;
   right: 0;
 }
+
 #map_inset{
   position: relative;
   top: 0;
@@ -12,6 +19,7 @@
   height: 350px;
   width: 100%;
 }
+
 #over_map {
   position: fixed;
   height: 40px;
@@ -24,19 +32,14 @@
   background-color: white;
   text-align: center;
 }
+
 #panel_container {
   position: fixed;
-  /*height: 40px;*/
   width: 350px;
   left: calc(50% - 175px);
-
   bottom: 10px;
   opacity: 1;
-  /*left: 50%;*/
-  /*margin-left: -125px;
-  width: 250px;*/
   z-index: 99;
-  /*background-color: white;*/
   text-align: center;
 }
 .panel-heading span {
@@ -50,19 +53,94 @@
 .info-panel {
   min-width: 100%;
 }
+
 #container-fluid {
   margin-right: auto;
   margin-left: auto;
   max-width: 650px; /* or 950px */
 }
-body
-{
-  padding-top: 70px;
+
+#mapthumb{
+  width: 350px;
+  max-width: 100%;
 }
+
 #myalert {
     /*color: #31708F; DEE6FA  5782BD*/
     /*http://paletton.com/#uid=13E0u0kaaUL00++54ZkeNNwiYCS*/
     background-color: #DEE6FA;
     border-color: #A9C6EE;
     color: #5782BD;
+}
+
+h2 {
+  margin-top: 45px;
+}
+
+
+audio.audio-control
+{
+  width: 140px;
+}
+.table > tbody > tr > td {
+     vertical-align: middle;
+}
+
+/* For the cards */
+
+html {
+  box-sizing: border-box;
+}
+
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+
+.inner-container{
+  width: 100%;
+}
+
+.column {
+    width: 100%;
+    margin-bottom: 16px;
+    margin-top: 16px;
+    padding: 0 8px;
+}
+
+/* Display the columns below each other instead of side by side on small screens */
+@media (max-width: 650px) {
+    .column {
+        width: 80%;
+        display: block;
+    }
+}
+
+/* Add some shadows to create a card effect */
+.card {
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Clear floats */
+.label-container::after, .row::after {
+    content: "";
+    clear: both;
+    display: table;
+    margin-bottom: 10px;
+}
+
+.title {
+    color: grey;
+}
+
+.thumb{
+  width: 150px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.tablerow{
+  margin-top: 30px;
+}
+.toprow{
+  font-weight: bold;
 }

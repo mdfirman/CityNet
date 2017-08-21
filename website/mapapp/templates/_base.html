@@ -4,11 +4,11 @@
 <head>
   <meta name="viewport" content="width=device-width", initial-scale="1">
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-  <link rel="stylesheet" href="assets/style.css">
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
   <script src="js/jquery.csv.js"></script>
   <script src="js/papaparse.js"></script>
+  <link rel="stylesheet" href="assets/style.css">
 
 
   <script src="js/chartkick.js"></script>
@@ -18,11 +18,15 @@
     <script>
      $(function() {
         $('#navbar li').click(function() {
-           //$('#navbar li').removeClass();
+           $('#navbar li').removeClass();
            console.log("in")
            $($(this).addClass('active'));
         });
      });
+
+     var shiftWindow = function() { scrollBy(0, -60) };
+    if (location.hash) shiftWindow();
+      window.addEventListener("hashchange", shiftWindow);
   </script>
 
   <title>London Soundscapes</title>
@@ -47,20 +51,23 @@
       <div id="navbar" class="navbar-collapse collapse">
         <ul class="nav navbar-nav">
           <li>
-            <a href="">Home</a>
-          </li>
-          <li>
             <a href="index.html">Map view</a>
           </li>
           <li>
             <a href="about.html">About</a>
           </li>
+          <li>
+            <a href="about.html#links">Links</a>
+          </li>
+          <li>
+            <a href="about.html#team">Team</a>
+          </li>
         </ul>
-        <ul class="nav navbar-nav navbar-right">
+        <!-- <ul class="nav navbar-nav navbar-right">
           <li>
             <a href="/">Contact</a>
           </li>
-        </ul>
+        </ul> -->
       </div>
     </div>
   </nav>

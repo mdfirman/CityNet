@@ -111,20 +111,11 @@ function initMap() {
             var audio_container = document.getElementById('audio');
             audio_container.pause()
             audio_container.load()
-            //
-            // console.log(this.position)
-            // google.maps.event.trigger(map_inset, "resize");
-            // google.maps.event.trigger(map_inset, "resize");
+
             $('#myModal').modal('show');
             google.maps.event.trigger(map_inset, "resize");
             inset_marker.setPosition(this.position);
             map_inset.setCenter(this.position);
-
-            // map_inset.setCenter({lat: this.results_data[1] + 0.0002, lng: this.results_data[2] - 0.0002});
-
-
-            // google.maps.event.trigger(map_inset, "resize");
-
 
             document.getElementById('site_image').src = this.im_path
 
@@ -180,3 +171,10 @@ $(document).on('click', '.panel-heading span.clickable', function(e){
     document.getElementById("showhide").innerHTML =  "Hide"
 	}
 })
+
+
+
+var is_touch_device = ("ontouchstart" in window) || window.DocumentTouch && document instanceof DocumentTouch;
+$(document).ready(function(){
+  $('[data-toggle="popover"]').popover({trigger: is_touch_device ? "click focus" : "hover focus"});
+});
