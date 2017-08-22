@@ -20,6 +20,7 @@
               xtitle: "Time of day",
               ytitle: "Average audio response",
               colors: ["#1b9e77", "#d95f02"],
+              hAxis: {ticks: [0, 1, 2, 3, 4]}
           };
           new Chartkick.LineChart("minute-data", data, options);
           console.log("loaded")
@@ -28,14 +29,14 @@
 
         <h4>Sample audio</h4>
         <audio controls id="audio" >
-          <source id="audio_source" src="assets/sites/audio/CM167NP-3527_20150912_053000.wav" type="audio/wav">
+          <source id="audio_source" src="assets/sites/audio/CM167NP-3527_20150912_053000.wav" type="audio/mp3">
           Your browser does not support the audio element.
         </audio>
 
-        <h4>Site Information</h4>
-        <p id="site-information">
+        <h4>Site photo and map</h4>
+        <!-- <p id="site-information">
           Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-        </p>
+        </p> -->
 
         <div class="row">
           <div class="col-md-5"><img id="site_image" width="100%"></div>

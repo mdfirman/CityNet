@@ -1,7 +1,15 @@
+html {
+  box-sizing: border-box;
+}
+
 body
 {
   padding-top: 70px;
-  font-size: 12pt;
+  font-size: 13pt;
+}
+
+h2 {
+  margin-top: 45px;
 }
 
 #map{
@@ -20,19 +28,6 @@ body
   width: 100%;
 }
 
-#over_map {
-  position: fixed;
-  height: 40px;
-  bottom: 30px;
-  opacity: 1;
-  left: 50%;
-  margin-left: -125px;
-  width: 250px;
-  z-index: 99;
-  background-color: white;
-  text-align: center;
-}
-
 #panel_container {
   position: fixed;
   width: 350px;
@@ -41,11 +36,14 @@ body
   opacity: 1;
   z-index: 99;
   text-align: center;
+  font-size: 12pt;
 }
+
 .panel-heading span {
 	margin-top: -20px;
 	font-size: 15px;
 }
+
 .panel-heading {
 	min-width: 100%;
 }
@@ -60,9 +58,10 @@ body
   max-width: 650px; /* or 950px */
 }
 
-#mapthumb{
-  width: 350px;
+.bigthumb{
+  width: 650px;
   max-width: 100%;
+  margin-bottom: 8px;
 }
 
 #myalert {
@@ -73,11 +72,6 @@ body
     color: #5782BD;
 }
 
-h2 {
-  margin-top: 45px;
-}
-
-
 audio.audio-control
 {
   width: 140px;
@@ -87,10 +81,6 @@ audio.audio-control
 }
 
 /* For the cards */
-
-html {
-  box-sizing: border-box;
-}
 
 *, *:before, *:after {
   box-sizing: inherit;
@@ -110,7 +100,7 @@ html {
 /* Display the columns below each other instead of side by side on small screens */
 @media (max-width: 650px) {
     .column {
-        width: 80%;
+        width: 100%;
         display: block;
     }
 }
@@ -118,6 +108,12 @@ html {
 /* Add some shadows to create a card effect */
 .card {
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+    padding-top: 16px;
+    padding-bottom: 8px;
+}
+
+.card h3 {
+  margin-top: 0px;
 }
 
 /* Clear floats */
@@ -125,7 +121,6 @@ html {
     content: "";
     clear: both;
     display: table;
-    margin-bottom: 10px;
 }
 
 .title {
@@ -134,13 +129,13 @@ html {
 
 .thumb{
   width: 150px;
-  margin-top: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .tablerow{
   margin-top: 30px;
 }
+
 .toprow{
   font-weight: bold;
 }

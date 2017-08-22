@@ -101,12 +101,11 @@ function initMap() {
             // $('#main-modal-desc').html(this.postcode)
 
             var chart = Chartkick.charts["minute-data"];
-            console.log(this.chartdata_path)
             chart.updateData(this.chartdata_path);
             chart.redraw();
 
             var myaudio = document.getElementById('audio_source');
-            myaudio.src = 'assets/sites/audio/' + this.wav_path;
+            myaudio.src = 'assets/sites/audio_mp3/' + this.wav_path.replace('.wav', '.mp3');
 
             var audio_container = document.getElementById('audio');
             audio_container.pause()
@@ -178,3 +177,8 @@ var is_touch_device = ("ontouchstart" in window) || window.DocumentTouch && docu
 $(document).ready(function(){
   $('[data-toggle="popover"]').popover({trigger: is_touch_device ? "click focus" : "hover focus"});
 });
+
+
+var shiftWindow = function() { scrollBy(0, -60) };
+if (location.hash) shiftWindow();
+   window.addEventListener("hashchange", shiftWindow);
