@@ -60,7 +60,6 @@ function initMap() {
         for (i=0; i<results.data.length - 1; i++)
         {
           var icon_url = './assets/sites/charts/' + results.data[i][0] + '.png';
-
           var marker = new google.maps.Marker({
             position: {lat: results.data[i][1], lng: results.data[i][2]},
             map: map,
@@ -75,6 +74,11 @@ function initMap() {
             im_path: "assets/sites/ims/" + results.data[i][0] + ".jpg",
             chartdata_path: "assets/sites/chartdata/" + results.data[i][0] + ".json",
             description: results.data[i][4],
+            sitetype: results.data[i][5],
+            isphoto: results.data[i][6],
+            startdate: results.data[i][7],
+            enddate: results.data[i][8],
+            website: results.data[i][9],
             results_data: results.data[i]
           });
 
@@ -97,8 +101,20 @@ function initMap() {
           // When marer clicked, the modal is updated then shown
           marker.addListener('click', function() {
 
-            $('#main-modal-title').html(this.description);
-            // $('#main-modal-desc').html(this.postcode)
+            $('#sitetype').html(this.sitetype);
+            $('#startdate').html(this.startdate);
+            $('#enddate').html(this.enddate);
+            $('#sitewebsite').html(this.description);
+            document.getElementById('sitewebsite').href = this.website;
+
+            if (this.isphoto == 'Y') {
+              document.getElementById('site_image').style.display = 'block';
+              document.getElementById('site_image').src = this.im_path;
+            }
+            else
+            {
+              document.getElementById('site_image').style.display = 'none';
+            }
 
             var chart = Chartkick.charts["minute-data"];
             chart.updateData(this.chartdata_path);
@@ -115,8 +131,6 @@ function initMap() {
             google.maps.event.trigger(map_inset, "resize");
             inset_marker.setPosition(this.position);
             map_inset.setCenter(this.position);
-
-            document.getElementById('site_image').src = this.im_path
 
           });
         }
