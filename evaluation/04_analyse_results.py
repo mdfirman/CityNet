@@ -24,7 +24,7 @@ SPEC_TYPE = 'mel'  # only for visualisation
 VOLUME_BOOST = 5  # for saving wav files
 print run_type, classname
 
-base_dir = '/media/michael/Engage/data/audio/alison_data/golden_set/'
+base_dir = yaml.load(open('../CONFIG.yaml'))['base_dir']
 
 results_dir = base_dir + 'predictions/%s/%s/per_file_predictions/' % (run_type, classname)
 spec_pkl_dir = base_dir + 'extracted/specs/'
@@ -177,17 +177,19 @@ fmt = lambda x: "%s\n\n%2.1f%%" % (labels[x], cm.ravel()[x])
 annots = np.array([fmt(xx) for xx in range(4)]).reshape(2, 2)
 fig = plt.figure(figsize=(4, 4))
 ax = fig.add_axes((0.18,0.15,0.8,0.8))
-sns.heatmap(cm, annot=annots, fmt='s', ax=ax, cbar=1, vmin=0, vmax=100) #
+sns.heatmap(cm, annot=annots, fmt='s', ax=ax, cbar=1, vmin=0, vmax=100, annot_kws={'fontsize': 14}) #
 #plt.savefig(savedir + 'confusion_matrix1.pdf')
 ax.grid('off')
 ax.set_aspect(1.0)
 plt.xticks([0.5, 1.5], [classname.capitalize(), 'None'])
 plt.yticks([0.5, 1.5], ['None', classname.capitalize()])
-plt.tick_params(axis='both', which='major', labelsize=12)
-plt.ylabel('Actual', fontsize=16)
-plt.xlabel('Predicted', fontsize=16)
-plt.savefig(savedir + 'confusion_matrix.pdf')
-plt.savefig(savedir + 'confusion_matrix.png', dpi=800)
+plt.tick_params(axis='both', which='major', labelsize=18)
+plt.ylabel('Actual', fontsize=22)
+plt.xlabel('Predicted', fontsize=22)
+mapper = {'ensemble_train_anthrop': 'C)', 'ensemble_train': 'A)', 'warblr_challenge_baseline': 'B)'}
+plt.text(-0.35, 2.1, mapper[run_type], fontsize=22)
+# plt.savefig(savedir + 'confusion_matrix.pdf')
+# plt.savefig(savedir + 'confusion_matrix.png', dpi=800)
 plt.savefig('/home/michael/Dropbox/engage/FairbrassFirmanetal_/data/predictions/pr_curves/%s_%s.pdf' % (run_type, classname))
 plt.close()
 sys.exit()

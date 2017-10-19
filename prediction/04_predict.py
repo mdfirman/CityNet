@@ -13,7 +13,7 @@ from train_helpers import SpecSampler
 import train_helpers
 import data_io
 
-train_name = 'ensemble_train_bigger_x_width'
+train_name = 'ensemble_train_anthrop'
 classname = 'anthrop'
 base = '/media/michael/Engage/data/audio/alison_data/golden_set/predictions/'
 load_path = base + '/%s/%d/%s/results/weights_99.pkl'
