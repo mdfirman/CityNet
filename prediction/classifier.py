@@ -69,21 +69,13 @@ class Classifier(object):
         else:
             raise Exception()
 
-        # print "Took %fs to load wav" % (time() - tic)
-        #self.fullwav = self.wav.copy()
-        # self.wav = self.wav[:10000]
-
     def compute_spec(self):
         tic = time()
         spec = melspectrogram(self.wav, sr=self.sample_rate, n_fft=N_FFT,
                               hop_length=HOP_LENGTH, n_mels=N_MELS)
-        # Do log conversion:
-        # spec = np.log(self.opts.A + self.opts.B * spec)
-        # spec -= np.median(spec, axis=1, keepdims=True)
+
         spec = spec.astype(np.float32)
         self.spec = spec
-
-        # print "Took %fs to create spec" % (time() - tic)
 
     def classify(self):
         """Apply the classifier"""

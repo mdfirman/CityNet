@@ -1,5 +1,6 @@
 import sys
 class_to_use = sys.argv[1]
+assert class_to_use in ['biotic', 'anthrop']
 
 import cPickle as pickle
 import numpy as np
@@ -15,6 +16,7 @@ import yaml
 sys.path.append('../lib')
 from train_helpers import SpecSampler
 import train_helpers
+from train_helpers import force_make_dir
 import data_io
 from ml_helpers import ui
 
@@ -87,8 +89,12 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir, op
 
     #######################
     # TESTING
-    results_savedir = train_helpers.force_make_dir(logging_dir + 'results/')
-    predictions_savedir = train_helpers.force_make_dir(logging_dir + 'per_file_predictions/')
+    if small:
+        results_savedir = force_make_dir(logging_dir + 'results/')
+        predictions_savedir = force_make_dir(logging_dir + 'per_file_predictions/')
+    else:
+        results_savedir = force_make_dir(logging_dir + 'results_SMALL_TEST/')
+        predictions_savedir = force_make_dir(logging_dir + 'per_file_predictions_SMALL_TEST/')
 
     test_sampler = SpecSampler(64, opts.HWW_X, opts.HWW_Y, False, opts.LEARN_LOG, randomise=False, seed=10, balanced=False)
 
@@ -118,7 +124,6 @@ def train_large_test_golden(RUN_TYPE, opts):
 
     # loading testing data
     # (remember, here we are testing on ALL golden... so it doesn't matter what the test fold is
-    # print "WARING" * 10
     golden_1, golden_2 = data_io.load_splits(test_fold=0)
     test_files = golden_1 + golden_2
     if small:
@@ -135,7 +140,7 @@ def train_large_test_golden(RUN_TYPE, opts):
 
     for idx in range(opts.ENSEMBLE_MEMBERS):
         logging_dir = data_io.base + 'predictions/%s/%d/%s/' % (RUN_TYPE, idx, opts.CLASSNAME)
-        train_helpers.force_make_dir(logging_dir)
+        force_make_dir(logging_dir)
         sys.stdout = ui.Logger(logging_dir + 'log.txt')
 
         opts.height = train_X[0].shape[0]

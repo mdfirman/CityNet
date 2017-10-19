@@ -5,13 +5,13 @@ import numpy as np
 from scipy.ndimage.interpolation import zoom
 
 # golden data
-base = '/media/michael/Engage/data/audio/alison_data/golden_set/'
+base = yaml.load(open('../CONFIG.yaml'))['base_dir']
 annotation_pkl_dir = base + 'extracted/annotations/'
 spec_pkl_dir = base + 'extracted/specs/'
 log_dir = base + 'ml_runs/'
 
 # large data
-large_base = '/media/michael/Engage/data/audio/alison_data/large_dataset/'
+large_base = yaml.load(open('../CONFIG.yaml'))['large_data']
 large_spec_pkl_dir = large_base + 'specs/'
 large_annotation_pkl_dir = large_base + 'annots/'
 

@@ -188,9 +188,8 @@ plt.ylabel('Actual', fontsize=22)
 plt.xlabel('Predicted', fontsize=22)
 mapper = {'ensemble_train_anthrop': 'C)', 'ensemble_train': 'A)', 'warblr_challenge_baseline': 'B)'}
 plt.text(-0.35, 2.1, mapper[run_type], fontsize=22)
-# plt.savefig(savedir + 'confusion_matrix.pdf')
-# plt.savefig(savedir + 'confusion_matrix.png', dpi=800)
-plt.savefig('/home/michael/Dropbox/engage/FairbrassFirmanetal_/data/predictions/pr_curves/%s_%s.pdf' % (run_type, classname))
+plt.savefig(savedir + 'confusion_matrix.pdf')
+plt.savefig(savedir + 'confusion_matrix.png', dpi=800)
 plt.close()
 sys.exit()
 

@@ -2,8 +2,9 @@ import pandas as pd
 import librosa
 import os
 
-labels_dir = '/media/michael/Engage/data/audio/alison_data/golden_set/labels/Golden/'
-wav_dir = '/media/michael/Engage/data/audio/alison_data/golden_set/wavs/'
+base = yaml.load(open('../CONFIG.yaml'))['base_dir']
+labels_dir = base + '/labels/Golden/'
+wav_dir = base + '/wavs/'
 
 human_noises = set(['mix traffic', 'braking', 'voices', 'electrical',
                    'anthropogenic unknown', 'airplane', 'beep',
