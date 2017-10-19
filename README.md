@@ -1,9 +1,6 @@
 # CityNet - a neural network for urban sounds
 
 
-# Running the code
-
-
 
 
 # Requirements
