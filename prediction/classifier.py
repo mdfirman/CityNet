@@ -23,7 +23,7 @@ HOP_LENGTH = 1024 # 512
 N_MELS = 32 # 128
 
 # specify where the pretrained model is that we want to load
-models_dir = '/media/michael/Engage/data/audio/alison_data/golden_set/predictions/ensemble_train_anthrop/0/anthrop/'
+models_dir = yaml.load(open('../CONFIG.yaml'))['base_dir'] + '/predictions/ensemble_train_anthrop/0/anthrop/'
 
 # Specify the names of the files we want to load in
 # (Keep as they are to load in the model in the dropbox folder)

@@ -1,0 +1,366 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width", initial-scale="1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="js/jquery.csv.js"></script>
+  <script src="js/papaparse.js"></script>
+  <link rel="stylesheet" href="assets/style.css">
+
+
+  <script src="js/chartkick.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.bundle.js"></script>
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=places&sensor=false"></script>
+
+    <script>
+     $(function() {
+        $('#navbar li').click(function() {
+           $('#navbar li').removeClass();
+           console.log("in")
+           $($(this).addClass('active'));
+        });
+     });
+
+     var shiftWindow = function() { scrollBy(0, -60) };
+    if (location.hash) shiftWindow();
+      window.addEventListener("hashchange", shiftWindow);
+  </script>
+
+  <title>London Soundscapes</title>
+
+</head>
+
+<body>
+  <nav class="navbar navbar-default navbar-fixed-top active">
+    <div class="container">
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <img class="navbar-brand" src="assets/favicon/iconmonstr-microphone-4.svg" width="50" height="50" alt="microphone image">
+        <a class="navbar-brand" href="">London Soundscapes</a>
+      </div>
+
+      <div id="navbar" class="navbar-collapse collapse">
+        <ul class="nav navbar-nav">
+          <li>
+            <a href="index.html">Map view</a>
+          </li>
+          <li>
+            <a href="about.html">About</a>
+          </li>
+          <li>
+            <a href="about.html#links">Links</a>
+          </li>
+          <li>
+            <a href="about.html#team">Team</a>
+          </li>
+        </ul>
+        <!-- <ul class="nav navbar-nav navbar-right">
+          <li>
+            <a href="/">Contact</a>
+          </li>
+        </ul> -->
+      </div>
+    </div>
+  </nav>
+
+  
+
+
+
+<div class="container">
+  <div id="container-fluid">
+
+    <h1>Ecoacoustics of London</h1>
+    <p>
+      We have created tools to make it easier to monitor the environment in London.
+    </p>
+    <p>
+       CityNet is a machine-learned system that measures the amount of audible sound made by wildlife and humans recorded using sound recorders. This can be used to give a very detailed picture of how biodiversity and human activities change over time.
+    </p>
+      <p>
+       We use <a href="index.html">an interactive map</a> to display the automatically-inferred trends in biodiversity and human sounds at 63 sites of green infrastructure in and around Greater London, UK.
+     </p>
+<!--
+    <div class="alert alert-success" id="myalert">
+      <div class="row">
+        <div class="col-sm-7">
+            <img src="assets/zoomin3.png"  id="mapthumb" alt="Cinque Terre">
+        </div>
+        <div class="col-sm-4">
+            <a href="index.html" class="btn btn-default btn-lg">View map<i class="glyphicon glyphicon-triangle-right"></i></a>
+        </div>
+      </div>
+    </div> -->
+
+    <div class="column inner-container">
+      <div class="card row">
+        <div class="col-sm-8">
+          <a href="index.html">
+            <img src="assets/zoomin3.png" class="bigthumb" alt="Cinque Terre">
+          </a>
+        </div>
+        <div class="col-sm-4">
+          <a href="index.html" class="btn btn-default btn-lg">View map<i class="glyphicon glyphicon-triangle-right"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <p>
+    Our dataset was recorded by leaving a microphone at each test site for a period of four weeks.
+    </p>
+    <p>
+      For each moment in time in our audio dataset, our system predicts if biotic sound (e.g. birds and insects) can be heard. We also predict if anthropogenic (human) sound can be heard, e.g. cars and voices.
+    </p>
+
+    <div class="column inner-container">
+      <div class="card row">
+        <div class="col-sm-8">
+          <img src="assets/info/SE12RT-1.jpg" class="bigthumb">
+          <!-- <img src="assets/sites/ims/IG62XL.jpg" class="bigthumb"> -->
+        </div>
+        <div class="col-sm-4">
+          <i>Microphones were left at 63 green sites around Greater London</i>
+        </div>
+      </div>
+
+    </div>
+    <!-- <h3>Background</h3> -->
+
+    <p>
+      It is possible to have both biotic sounds and anthropogenic sounds occuring at the same time. For example, a bird might be singing while a car drives past. Similarly, sometimes neither biotic nor anthropogenic sound can be heard, for example where the only sound is rain or silence.
+    </p>
+
+    <p>
+      Here, we give four example audio clips demonstrating some of the sounds that can be heard in our data.
+    </p>
+
+    <div class="inner-container">
+      <table class="table table-responsive">
+        <thead>
+          <tr>
+            <th></th>
+            <th style="width:35%">Biotic sounds</th>
+            <th style="width:35%">Anthropogenic sounds</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <audio controls class="audio-control" controlsList="nodownload">
+                <source src="assets/info/SE3-13548_20130907_060000_bioticNoAnthro.mp3" type="audio/mp3">
+              Your browser does not support the audio element.
+              </audio>
+            </td>
+            <td>
+              <div class="row">
+                <div class="col-sm-2"><span class="glyphicon glyphicon-ok" aria-hidden="true"></span></div>
+                <div class="col-sm-10">Birdsong</div>
+              </div>
+            </td>
+            <td>
+              <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <audio controls class="audio-control" controlsList="nodownload">
+                <source src="assets/info/NW1-013527_20130628_0003_anthroNoBiotic.mp3" type="audio/mp3">
+              Your browser does not support the audio element.
+              </audio>
+            </td>
+            <td>
+              <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+            </td>
+            <td>
+              <div class="row">
+                <div class="col-sm-2"><span class="glyphicon glyphicon-ok" aria-hidden="true"></span></div>
+                <div class="col-sm-10">Siren, Road traffic</div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <audio controls class="audio-control" controlsList="nodownload">
+                <source src="assets/info/WC2H8LG-3527_20130715_1400_bioticAndAnthro.mp3" type="audio/mp3">
+              Your browser does not support the audio element.
+              </audio>
+            </td>
+            <td>
+              <div class="row">
+                <div class="col-sm-2"><span class="glyphicon glyphicon-ok" aria-hidden="true"></span></div>
+                <div class="col-sm-10">Whistle, beep, siren, road traffic, voices</div>
+              </div>
+            </td>
+            <td>
+              <div class="row">
+                <div class="col-sm-2"><span class="glyphicon glyphicon-ok" aria-hidden="true"></span></div>
+                <div class="col-sm-10">Birdsong</div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <audio controls class="audio-control" controlsList="nodownload">
+                <source src="assets/info/CR05EF-13527_20130916_0431_noAnthroNoBiotic.mp3" type="audio/mp3">
+              Your browser does not support the audio element.
+              </audio>
+            </td>
+            <td>
+              <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+            </td>
+            <td>
+              <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+
+    <h2 id="links">Related projects and links</h2>
+
+    <div class="inner-container">
+      <div class="column">
+        <div class="card row">
+          <div class="col-sm-3">
+            <img src="assets/links/lss.png" alt="Sound Map of London" class="thumb">
+          </div>
+          <div class="label-container col-sm-9">
+            <h3><a href="http://www.soundsurvey.org.uk">London Sound Survey</a></h3>
+            <p>A collection of Creative Commons-licensed sound recordings of people, places and events in London.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="column">
+        <div class="card row">
+          <div class="col-sm-3">
+            <img src="assets/links/bat-device-inside_web.jpg" alt="Jane" class="thumb">
+          </div>
+          <div class="label-container col-sm-9">
+            <h3><a href="https://naturesmartcities.com/">Nature Smart Cities</a></h3>
+            <p>A project bringing together environmental researchers and technologists to develop the world's first end-to-end open source system for monitoring bats, which has been deployed in the Queen Elizabeth Olympic Park, east London.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="column">
+        <div class="card row">
+          <div class="col-sm-3">
+            <img src="assets/links/daubentons-echolating-low-res-96.jpg" alt="Jane" class="thumb">
+          </div>
+          <div class="label-container col-sm-9">
+            <h3><a href="https://techforbioacousticsensing.wordpress.com/">Technologies for Bioacoustic Sensing</a></h3>
+            <p>A NERC-funded project to provide end-to-end open-source system for the acoustic monitoring of bat populations at national and international scales.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="column">
+        <div class="card row">
+          <div class="col-sm-3">
+            <img src="assets/links/audiotagger.jpg" alt="Jane" class="thumb">
+          </div>
+          <div class="label-container col-sm-9">
+            <h3><a href="https://github.com/groakat/AudioTagger">AudioTagger</a></h3>
+            <p>Computer software we used to label regions of sound files.</p>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+
+
+    <div class="inner-container">
+
+      <h2 id="team">Meet the team</h2>
+
+      <p>
+        Our system is created as part of <a href="http://http://www.engage-project.org/">ENGAGE</a>, an EPSRC grant which has seeded collaborations between computer scientists and data-intensive disciplines which stand to benefit from machine learning.
+      </p>
+      <p>
+        The people involved in making this particular project happen are:
+      </p>
+
+
+      <div class="column">
+        <div class="card row">
+          <div class="col-sm-3">
+            <img src="assets/team/alison_portrait.jpg" alt="Jane" class="thumb">
+          </div>
+          <div class="label-container col-sm-9">
+            <h3><a href="https://www.ucl.ac.uk/cber/people/alison-fairbrass">Alison Fairbrass</a></h3>
+            <p>Alison is an Engineering Doctoral student at University College London, developing acoustic technology for monitoring biodiversity in the urban environment. She is affiliated with the <a href="https://www.ucl.ac.uk/usar">Centre for Urban Sustainability and Resilience</a>, <a href="http://http://www.ucl.ac.uk/cber">Center for Biodiversity and Environment Research</a>, and sponsored by the <a href="http://http://www.bats.org.uk/">Bat Conservation Trust.</a></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="column">
+        <div class="card row">
+          <div class="col-sm-3">
+            <img src="assets/team/firman_pic.jpg" alt="Jane" class="thumb">
+          </div>
+          <div class="label-container col-sm-9">
+            <h3><a href="http://www.michaelfirman.co.uk">Michael Firman</a></h3>
+            <p>Michael is a computer science researcher at University College London, who has a keen interest in finding machine learning solutions for ecological problems.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="column">
+        <div class="card row">
+          <div class="col-sm-3">
+            <img src="assets/team/kate.jpg" alt="Kate" class="thumb">
+          </div>
+          <div class="label-container col-sm-9">
+            <h3><a href="https://www.ucl.ac.uk/cber/people/kate-jones">Kate Jones</a></h3>
+            <p>Kate is a Professor of Ecology and Biodiversity at the <a href="http://http://www.ucl.ac.uk/cber">Center for Biodiversity and Environment Research (CBER)</a> at UCL. Kate looks at the impact of global change on biodiversity and loves bats!</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="column">
+        <div class="card row">
+          <div class="col-sm-3">
+            <img src="assets/team/Helena_Titheridge.jpg" alt="Helena" class="thumb">
+          </div>
+          <div class="label-container col-sm-9">
+            <h3><a href="https://www.ucl.ac.uk/transport-institute/find-expert/helena-titheridge">Helena Titheridge</a></h3>
+            <p>Helena is a Senior Lecturer in the Department of Civil, Environmental and Geomatic Engineering at UCL, Director of the <a href="https://www.ucl.ac.uk/usar">Centre for Urban Sustainability and Resilience</a> and a member of the <a href="http://www.cege.ucl.ac.uk/cts/Pages/cts.aspx">Centre for Transport Studies</a>.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="column">
+        <div class="card row">
+          <div class="col-sm-3">
+            <img src="assets/team/GabeSmile_small.jpg" alt="Gabriel" class="thumb">
+          </div>
+          <div class="label-container col-sm-9">
+            <h3><a href="http://www0.cs.ucl.ac.uk/staff/G.Brostow/">Gabriel Brostow</a></h3>
+            <p>Gabriel Brostow is an Assoc. Prof. in Computer Vision at UCL, specialising in human-in-the-loop machine learning.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+
+
+
+</body>
+
+</html>

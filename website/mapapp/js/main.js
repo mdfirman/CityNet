@@ -105,7 +105,16 @@ function initMap() {
             $('#startdate').html(this.startdate);
             $('#enddate').html(this.enddate);
             $('#sitewebsite').html(this.description);
-            document.getElementById('sitewebsite').href = this.website;
+
+            if (this.website == ""){
+              $('#websitep').hide();
+              document.getElementById("sitewebsite").setAttribute("href", "javascript: void(0)");
+            }
+            else {
+              $('#websitep').show();
+              document.getElementById("sitewebsite_separate").setAttribute("href", this.website);
+              document.getElementById("sitewebsite").setAttribute("href", this.website);
+            }
 
             if (this.isphoto == 'Y') {
               document.getElementById('site_image').style.display = 'block';
@@ -136,18 +145,6 @@ function initMap() {
         }
     	}
     });
-    //
-
-    //
-    // // Resize map to show on a Bootstrap's modal
-    // $('#myModal').on('shown.bs.modal', function() {
-    //   var currentCenter = map_inset.getCenter();  // Get current center before resizing
-    //   google.maps.event.trigger(map_inset, "resize");
-    //   // console.log(london_centre)
-    //    // Re-set previous center
-    // });
-    //
-
   });
 
   $('#myModal').on('hidden.bs.modal', function () {

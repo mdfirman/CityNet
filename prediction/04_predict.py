@@ -3,6 +3,7 @@ import sys
 import cPickle as pickle
 import numpy as np
 import collections
+import yaml
 
 import lasagne
 import theano.tensor as T
@@ -15,7 +16,9 @@ import data_io
 
 train_name = 'ensemble_train_anthrop'
 classname = 'anthrop'
-base = '/media/michael/Engage/data/audio/alison_data/golden_set/predictions/'
+
+base = yaml.load(open('../CONFIG.yaml'))['base_dir'] + '/predictions/'
+
 load_path = base + '/%s/%d/%s/results/weights_99.pkl'
 predictions_savedir = train_helpers.force_make_dir(
     base + '/%s/%s/per_file_predictions/' % (train_name, classname))
