@@ -16,10 +16,12 @@ Then run the following commands to get suitable versions of the required librari
 
     pip install -r https://raw.githubusercontent.com/Lasagne/Lasagne/v0.1/requirements.txt
     pip install Lasagne==0.1
+    pip install --upgrade https://github.com/Lasagne/Lasagne/archive/master.zip
     pip install nolearn
     pip install librosa
+    pip install easydict
+    pip install tqdm
     pip install git+git://github.com/mdfirman/ml_helpers.git@master
-    pip install --upgrade https://github.com/Lasagne/Lasagne/archive/master.zip
 
 
 # How to classify a new audio file with CityNet
