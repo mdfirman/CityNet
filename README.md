@@ -7,12 +7,11 @@ The system has been trained and validated on human-labelled audio files captured
 CityNet comprises a neural network classifier, which operates on audio spectrograms to produce a measure of biotic or anthropogenic activity level.
 
 
-# Requirements
+## Requirements
 
-The system has been tested with `python 2.7`, using the `anaconda` distribution (see [here](https://www.anaconda.com/download/) for download details)
+The system has been tested on `Ubuntu 16.04` with `python 2.7`, using the `anaconda` distribution (see [here](https://www.anaconda.com/download/) for download details).
 
 Then run the following commands to get suitable versions of the required libraries:
-
 
     pip install -r https://raw.githubusercontent.com/Lasagne/Lasagne/v0.1/requirements.txt
     pip install Lasagne==0.1
@@ -23,8 +22,10 @@ Then run the following commands to get suitable versions of the required librari
     pip install tqdm
     pip install git+git://github.com/mdfirman/ml_helpers.git@master
 
+For training and testing we used a 2GB nvidia GPU. The computation requirements for classification are pretty low though, so a GPU should not be required at test time.
 
-# How to classify a new audio file with CityNet
+
+## How to classify a new audio file with CityNet
 
 - Run `python demo.py` to classify an example audio file. 
 - Predictions should be saved in the folder `demo`. 
