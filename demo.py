@@ -11,7 +11,7 @@ sys.path.append('lib')
 from prediction.classifier import Classifier, HOP_LENGTH
 
 # where to download the pretrained models from
-models_dl_path = 'https://www.dropbox.com/s/hyboxgpnfv94hvr/models.zip?dl=0'
+models_dl_path = 'https://www.dropbox.com/s/6mhv7ddfhievx8x/models.zip?dl=1'
 
 
 #############################################
@@ -25,7 +25,7 @@ if not os.path.exists('models/biotic/network_opts.yaml'):
 
     with zipfile.ZipFile('models/models.zip', 'r') as zip_ref:
         zip_ref.extractall('models/')
-        
+
 print "-> ...Done"
 
 
