@@ -48,7 +48,7 @@ print "-> ...Done"
 
 ############################
 
-print "Saving predictions to disk"
+print "-> Saving predictions to disk"
 
 with open('demo/predictions.pkl', 'wb') as f:
     pickle.dump(preds, f, -1)
@@ -58,7 +58,7 @@ print "-> ...Done"
 
 ######################
 
-print "Plotting predictions"
+print "-> Plotting predictions"
 
 plt.figure(figsize=(15, 5))
 cols = {'anthrop': 'b', 'biotic': 'g'}
