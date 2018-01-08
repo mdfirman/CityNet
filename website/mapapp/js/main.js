@@ -116,14 +116,14 @@ function initMap() {
               document.getElementById("sitewebsite").setAttribute("href", this.website);
             }
 
-            if (this.isphoto == 'Y') {
-              document.getElementById('site_image').style.display = 'block';
-              document.getElementById('site_image').src = this.im_path;
-            }
-            else
-            {
-              document.getElementById('site_image').style.display = 'none';
-            }
+            // if (this.isphoto == 'Y') {
+            document.getElementById('site_image').style.display = 'block';
+            document.getElementById('site_image').src = this.im_path;
+            // }
+            // else
+            // {
+            //   document.getElementById('site_image').style.display = 'none';
+            // }
 
             var chart = Chartkick.charts["minute-data"];
             chart.updateData(this.chartdata_path);
@@ -163,33 +163,35 @@ function initMap() {
 
 };
 
-google.maps.event.addDomListener(window, "load", initMap);
-
-
-$(document).on('click', '.panel-heading span.clickable', function(e){
-    var $this = $(this);
-	if(!$this.hasClass('panel-collapsed')) {
-		$this.parents('.panel').find('.panel-body').slideUp();
-		$this.addClass('panel-collapsed');
-		$this.find('i').removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-up');
-    document.getElementById("showhide").innerHTML =  "Show"
-	} else {
-		$this.parents('.panel').find('.panel-body').slideDown();
-		$this.removeClass('panel-collapsed');
-		$this.find('i').removeClass('glyphicon-chevron-up').addClass('glyphicon-chevron-down');
-    // $(".showhide").html = "Show";
-    document.getElementById("showhide").innerHTML =  "Hide"
-	}
-})
-
-
-
-var is_touch_device = ("ontouchstart" in window) || window.DocumentTouch && document instanceof DocumentTouch;
 $(document).ready(function(){
+  console.log("Loaded")
+
+  google.maps.event.addDomListener(window, "load", initMap);
+
+  $(document).on('click', '#panel-heading', function(e){
+    var $this = $(this);
+    console.log("Clicked")
+  	if(!$this.hasClass('panel-collapsed')) {
+  		$this.parents('.panel').find('.panel-body').slideUp();
+  		$this.addClass('panel-collapsed');
+  		$this.find('i').removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-up');
+      document.getElementById("showhide").innerHTML =  "Show"
+  	} else {
+  		$this.parents('.panel').find('.panel-body').slideDown();
+  		$this.removeClass('panel-collapsed');
+  		$this.find('i').removeClass('glyphicon-chevron-up').addClass('glyphicon-chevron-down');
+      // $(".showhide").html = "Show";
+      document.getElementById("showhide").innerHTML =  "Hide"
+  	}
+  })
+
+  var is_touch_device = ("ontouchstart" in window) || window.DocumentTouch && document instanceof DocumentTouch;
   $('[data-toggle="popover"]').popover({trigger: is_touch_device ? "click focus" : "hover focus"});
+  
+  var shiftWindow = function() { scrollBy(0, -60) };
+  if (location.hash) shiftWindow();
+    window.addEventListener("hashchange", shiftWindow);
+  
 });
 
 
-var shiftWindow = function() { scrollBy(0, -60) };
-if (location.hash) shiftWindow();
-   window.addEventListener("hashchange", shiftWindow);

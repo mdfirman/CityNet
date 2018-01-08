@@ -7,7 +7,7 @@
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal">&times;</button>
         <h3 class="modal-title" id="main-modal-title">
-          <a href="tmp" id="sitewebsite">Bethnal Green Nature Reserve</a>
+          <a href="tmp" id="sitewebsite" target="_blank">Bethnal Green Nature Reserve</a>
         </h3>
       </div>
       <div class="modal-body">
@@ -45,7 +45,7 @@
           Recordings made from <span id="startdate">XX</span> to <span id="enddate">YY</span>
         </p>
         <p id="websitep">
-          <a href="tmp" id="sitewebsite_separate">Website for site</a>
+          <a href="tmp" id="sitewebsite_separate" target="_blank">Website for site</a>
         </p>
 
         <div class="row">
@@ -67,10 +67,10 @@
   <div class="row">
      <!-- class="col-sm-8 col-sm-offset-4"> -->
     <div>
-      <div class="panel panel-default" id="info-panel">
-        <div class="panel-heading" id="panel-heading">
+      <div class="panel panel-default" id="info-panel" style="cursor: pointer;">
+        <div class="panel-heading" id="panel-heading" style="cursor: pointer;">
           <h3 class="panel-title"><b>Legend</b></h3>
-          <span class="pull-right clickable">
+          <span class="pull-right clickable" id="click-to-showhide"  style="cursor: pointer;">
             &nbsp;<emph id="showhide">Hide</emph> &nbsp;
             <i class="glyphicon glyphicon-chevron-down"></i>
           </span>
