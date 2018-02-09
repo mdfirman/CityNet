@@ -1,6 +1,8 @@
 '''
 Script to analyse a results folder and save all the plots, wav files etc
 '''
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
 import os
@@ -34,7 +36,7 @@ annotation_pkl_dir = base_dir + 'extracted/annotations/'
 savedir = force_make_dir(results_dir + '../analysis/')
 per_file_plots_dir = force_make_dir(results_dir + '../per_file_plots/')
 wav_results_dir = force_make_dir(results_dir + '../wav_results/')
-
+print "Saving to:", savedir
 
 ##############################################################################
 # ASSESS FP ETC
@@ -147,6 +149,9 @@ from sklearn.metrics import precision_score, recall_score
 min_idx = np.argmin(np.abs(np.hstack(prec) - 0.95))
 scores['recall_at_095_prec'] = recall[min_idx]
 
+min_idx = np.argmin(np.abs(np.hstack(prec) - 0.5))
+scores['recall_at_050_prec'] = recall[min_idx]
+
 for key, val in scores.iteritems():
     print "%s - %0.3f" % (key.ljust(20), val)
 
@@ -171,13 +176,13 @@ all_y_true = np.hstack(all_y_true)
 print "Print mean", all_y_true.mean()
 all_y_pred = all_y_soft_stacked > thresholds[min_idx]
 cm = (confusion_matrix(all_y_true, all_y_pred) * slice_size).astype(float)[::-1, ::-1]#.T[::-1, ::-1].T
-cm = cm / cm.sum() * 100
+#cm = cm / cm.sum() * 100
 labels = ['True Positive', 'False Positive', 'False Negative', 'True Negative']
-fmt = lambda x: "%s\n\n%2.1f%%" % (labels[x], cm.ravel()[x])
+fmt = lambda x: "%s\n\n%2.1fs" % (labels[x], cm.ravel()[x])
 annots = np.array([fmt(xx) for xx in range(4)]).reshape(2, 2)
 fig = plt.figure(figsize=(4, 4))
 ax = fig.add_axes((0.18,0.15,0.8,0.8))
-sns.heatmap(cm, annot=annots, fmt='s', ax=ax, cbar=1, vmin=0, vmax=100, annot_kws={'fontsize': 14}) #
+sns.heatmap(cm, annot=annots, fmt='s', ax=ax, cbar=1, vmin=0, vmax=cm.max(), annot_kws={'fontsize': 14}) #
 #plt.savefig(savedir + 'confusion_matrix1.pdf')
 ax.grid('off')
 ax.set_aspect(1.0)
@@ -187,6 +192,8 @@ plt.tick_params(axis='both', which='major', labelsize=18)
 plt.ylabel('Actual', fontsize=22)
 plt.xlabel('Predicted', fontsize=22)
 mapper = {'ensemble_train_anthrop': 'C)', 'ensemble_train': 'A)', 'warblr_challenge_baseline': 'B)'}
+if run_type not in mapper:
+    sys.exit()
 plt.text(-0.35, 2.1, mapper[run_type], fontsize=22)
 plt.savefig(savedir + 'confusion_matrix.pdf')
 plt.savefig(savedir + 'confusion_matrix.png', dpi=800)

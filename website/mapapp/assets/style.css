@@ -106,10 +106,10 @@ audio.audio-control
 }
 
 /* Add some shadows to create a card effect */
-.card {
+.card, .tab-content {
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
     padding-top: 16px;
-    padding-bottom: 8px;
+    padding-bottom: 80px;
 }
 
 .card h3 {

@@ -3,17 +3,17 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width", initial-scale="1">
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
   <script src="js/jquery.csv.js"></script>
   <script src="js/papaparse.js"></script>
   <link rel="stylesheet" href="assets/style.css">
 
 
   <script src="js/chartkick.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.bundle.js"></script>
-  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=places&sensor=false"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.bundle.js"></script>
+  <script src="//maps.google.com/maps/api/js?key=AIzaSyAZ9vuaQp47M3iLaj3L6kg6sy-d9PI-76Q" type="text/javascript"></script>
 
     <script>
      $(function() {
@@ -45,7 +45,7 @@
           <span class="icon-bar"></span>
         </button>
         <img class="navbar-brand" src="assets/favicon/iconmonstr-microphone-4.svg" width="50" height="50" alt="microphone image">
-        <a class="navbar-brand" href="">London Soundscapes</a>
+        <a class="navbar-brand" href="index.html">London Soundscapes</a>
       </div>
 
       <div id="navbar" class="navbar-collapse collapse">
@@ -115,7 +115,7 @@
     </div>
 
     <p>
-    Our dataset was recorded by leaving a microphone at each test site for a period of four weeks.
+    Our dataset was created by leaving a sound recorder at each test site for a period of one week.
     </p>
     <p>
       For each moment in time in our audio dataset, our system predicts if biotic sound (e.g. birds and insects) can be heard. We also predict if anthropogenic (human) sound can be heard, e.g. cars and voices.
@@ -128,7 +128,7 @@
           <!-- <img src="assets/sites/ims/IG62XL.jpg" class="bigthumb"> -->
         </div>
         <div class="col-sm-4">
-          <i>Microphones were left at 63 green sites around Greater London</i>
+          <i>Sound recorders were left at 63 green infrastructure sites around Greater London</i>
         </div>
       </div>
 
@@ -173,7 +173,7 @@
           <tr>
             <td>
               <audio controls class="audio-control" controlsList="nodownload">
-                <source src="assets/info/NW1-013527_20130628_0003_anthroNoBiotic.mp3" type="audio/mp3">
+                <source src="assets/info/NW1-013527_20130628_0003_anthroNoBiotic_10sec.mp3" type="audio/mp3">
               Your browser does not support the audio element.
               </audio>
             </td>
@@ -190,14 +190,14 @@
           <tr>
             <td>
               <audio controls class="audio-control" controlsList="nodownload">
-                <source src="assets/info/WC2H8LG-3527_20130715_1400_bioticAndAnthro.mp3" type="audio/mp3">
+                <source src="assets/info/CR05EF-13527_20130916_0823_bioticAndAnthro_10sec.mp3" type="audio/mp3">
               Your browser does not support the audio element.
               </audio>
             </td>
             <td>
               <div class="row">
                 <div class="col-sm-2"><span class="glyphicon glyphicon-ok" aria-hidden="true"></span></div>
-                <div class="col-sm-10">Whistle, beep, siren, road traffic, voices</div>
+                <div class="col-sm-10">Air traffic, siren, road traffic</div>
               </div>
             </td>
             <td>
@@ -210,7 +210,7 @@
           <tr>
             <td>
               <audio controls class="audio-control" controlsList="nodownload">
-                <source src="assets/info/CR05EF-13527_20130916_0431_noAnthroNoBiotic.mp3" type="audio/mp3">
+                <source src="assets/info/CR05EF-13527_20130916_0431_noAnthroNoBiotic_10sec.mp3" type="audio/mp3">
               Your browser does not support the audio element.
               </audio>
             </td>
