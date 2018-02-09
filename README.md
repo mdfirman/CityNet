@@ -25,9 +25,13 @@ An overview of predictions of biotic and anthropogenic activity on recordings of
 
 ## Requirements
 
-The system has been tested on `Ubuntu 16.04` with `python 2.7`, using the `anaconda` distribution (see [here](https://www.anaconda.com/download/) for download details).
+The system has been tested using:
 
-Then run the following commands to get suitable versions of the required libraries:
+- `Ubuntu 16.04`
+- `python 2.7`
+- The `anaconda` distribution (see [here](https://www.anaconda.com/download/) for download details).
+
+Run the following commands to get suitable versions of the required libraries:
 
     pip install -r https://raw.githubusercontent.com/Lasagne/Lasagne/v0.1/requirements.txt
     pip install Lasagne==0.1
@@ -38,13 +42,15 @@ Then run the following commands to get suitable versions of the required librari
     pip install tqdm
     pip install git+git://github.com/mdfirman/ml_helpers.git@master
 
-For training and testing we used a 2GB nvidia GPU. The computation requirements for classification are pretty low though, so a GPU should not be required at test time.
+For training and testing we used a 2GB NVIDIA GPU. The computation requirements for classification are pretty low though, so a GPU should not be required.
 
 
 ## How to classify a new audio file with CityNet
 
 - Run `python demo.py` to classify an example audio file.
 - Predictions should be saved in the folder `demo`.
-- Your newly-created file `demo/prediction.pdf` should look identical to the provided file `demo/reference_prediction.pdf`.
+- Your newly-created file `demo/prediction.pdf` should look identical to the provided file `demo/reference_prediction.pdf`:
+
+
 
 Editing `demo.py` should allow you to classify your own audio files.
