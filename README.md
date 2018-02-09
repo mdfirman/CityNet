@@ -9,9 +9,9 @@ CityNet comprises a neural network classifier, which operates on audio spectrogr
 More details of the method are available from the paper:
 
 > **[CityNet - Deep Learning Tools for Urban Ecoacoustic Assessment](https://doi.org/10.1101/248708)**
-
+>
 > Alison J Fairbrass, Michael Firman, Carol Williams, Gabriel J Brostow, Helena Titheridge and Kate E Jones
-
+>
 > **doi**: https://doi.org/10.1101/248708
 
 
