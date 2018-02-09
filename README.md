@@ -17,7 +17,7 @@ More details of the method are available from the paper:
 
 An overview of predictions of biotic and anthropogenic activity on recordings of London sounds can be seen at our website [londonsounds.org](http://londonsounds.org).
 
-![Screenshot of urban sounds website](website/website.png)
+[![Screenshot of urban sounds website](website/website.png)](http://londonsounds.org)
 
 
 
