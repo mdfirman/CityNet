@@ -11,7 +11,7 @@ sys.path.append('lib')
 from prediction.classifier import Classifier, HOP_LENGTH
 
 # where to download the pretrained models from
-models_dl_path = 'https://www.dropbox.com/s/6mhv7ddfhievx8x/models.zip?dl=1'
+models_dl_path = 'https://www.dropbox.com/s/hyboxgpnfv94hvr/models.zip?dl=1'
 
 
 #############################################
@@ -19,7 +19,7 @@ models_dl_path = 'https://www.dropbox.com/s/6mhv7ddfhievx8x/models.zip?dl=1'
 print "-> Downloading and unzipping pre-trained model..."
 
 if not os.path.exists('models/biotic/network_opts.yaml'):
-    
+
     if not os.path.exists('models/models.zip'):
         wget.download(models_dl_path, 'models')
 
@@ -66,7 +66,7 @@ cols = {'anthrop': 'b', 'biotic': 'g'}
 for key, val in preds.items():
     len_in_s = val.shape[0] * HOP_LENGTH / predictor.sample_rate
     print len_in_s
-    
+
     x = np.linspace(0, len_in_s, val.shape[0])
     plt.plot(x, val[:, 1], cols[key], label=key)
 
