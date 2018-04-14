@@ -2,21 +2,18 @@ import sys
 class_to_use = sys.argv[1]
 assert class_to_use in ['biotic', 'anthrop']
 
-import cPickle as pickle
+import pickle
 import numpy as np
 
-import lasagne
-import theano.tensor as T
-import theano
+import tensorflow as tf
+from tensorflow.contrib import slim
 
 from tqdm import tqdm
 from easydict import EasyDict as edict
 import yaml
 
 sys.path.append('../lib')
-from train_helpers import SpecSampler
-import train_helpers
-from train_helpers import force_make_dir
+from train_helpers import SpecSampler, force_make_dir, create_net
 import data_io
 from ml_helpers import ui
 
@@ -38,89 +35,98 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir, op
     test_sampler = SpecSampler(64, opts.HWW_X, opts.HWW_Y, False, opts.LEARN_LOG, randomise=False, seed=10, balanced=True)
 
     height = train_X[0].shape[0]
-    net = train_helpers.create_net(height, opts.HWW_X, opts.LEARN_LOG, opts.NUM_FILTERS,
+    net = create_net(height, opts.HWW_X, opts.LEARN_LOG, opts.NUM_FILTERS,
         opts.WIGGLE_ROOM, opts.CONV_FILTER_WIDTH, opts.NUM_DENSE_UNITS, opts.DO_BATCH_NORM)
 
-    y_in = T.ivector()
-    x_in = net['input'].input_var
+    y_in = tf.placeholder(tf.int32, (None))
+    x_in = net['input']
 
-    # print lasagne.layers.get_output_shape_for(net['prob'])
-    trn_output = lasagne.layers.get_output(net['prob'], deterministic=False)
-    test_output = lasagne.layers.get_output(net['prob'], deterministic=True)
-    params = lasagne.layers.get_all_params(net['prob'], trainable=True)
+    print("todo - fix this up...")
+    trn_output = net['output']
+    test_output = net['output']
 
-    _trn_loss = lasagne.objectives.categorical_crossentropy(trn_output, y_in).mean()
-    _test_loss = lasagne.objectives.categorical_crossentropy(test_output, y_in).mean()
-    _trn_acc = T.mean(T.eq(T.argmax(trn_output, axis=1), y_in))
-    _test_acc = T.mean(T.eq(T.argmax(test_output, axis=1), y_in))
+    _trn_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+        logits=trn_output, labels=y_in))
+    _test_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+        logits=test_output, labels=y_in))
+    print(y_in, trn_output, tf.argmax(trn_output, axis=1))
 
-    updates = lasagne.updates.adam(_trn_loss, params, learning_rate=opts.LEARNING_RATE)
+    pred = tf.cast(tf.argmax(trn_output, axis=1), tf.int32)
+    _trn_acc = tf.reduce_mean(tf.cast(tf.equal(y_in, pred), tf.float32))
 
-    print "Compiling...",
-    train_fn = theano.function([x_in, y_in], [_trn_loss, _trn_acc], updates=updates)
-    val_fn = theano.function([x_in, y_in], [_test_loss, _test_acc])
-    pred_fn = theano.function([x_in], test_output)
-    print "DONE"
+    pred = tf.cast(tf.argmax(test_output, axis=1), tf.int32)
+    _test_acc = tf.reduce_mean(tf.cast(tf.equal(y_in, pred), tf.float32))
 
-    for epoch in range(opts.MAX_EPOCHS):
+    optimizer = tf.train.AdamOptimizer(learning_rate=opts.LEARNING_RATE, beta1=0.5, beta2=0.9)
 
-        ######################
-        # TRAINING
-        trn_losses = []
-        trn_accs = []
+    train_op = slim.learning.create_train_op(_trn_loss, optimizer)
 
-        for xx, yy in tqdm(train_sampler(train_X, train_y)):
-            trn_ls, trn_acc = train_fn(xx, yy)
-            trn_losses.append(trn_ls)
-            trn_accs.append(trn_acc)
+    saver = tf.train.Saver(max_to_keep=5)
 
-        ######################
-        # VALIDATION
-        val_losses = []
-        val_accs = []
+    with tf.Session() as sess:
 
-        for xx, yy in test_sampler(test_X, test_y):
-            val_ls, val_acc = val_fn(xx, yy)
-            val_losses.append(val_ls)
-            val_accs.append(val_acc)
+        sess.run(tf.global_variables_initializer())
 
-        print " %03d :: %02f  -  %02f  -  %02f  -  %02f" % (epoch, np.mean(trn_losses),
-            np.mean(trn_accs), np.mean(val_losses), np.mean(val_accs))
+        for epoch in range(opts.MAX_EPOCHS):
 
-    #######################
-    # TESTING
-    if small:
-        results_savedir = force_make_dir(logging_dir + 'results/')
-        predictions_savedir = force_make_dir(logging_dir + 'per_file_predictions/')
-    else:
-        results_savedir = force_make_dir(logging_dir + 'results_SMALL_TEST/')
-        predictions_savedir = force_make_dir(logging_dir + 'per_file_predictions_SMALL_TEST/')
+            ######################
+            # TRAINING
+            trn_losses = []
+            trn_accs = []
 
-    test_sampler = SpecSampler(64, opts.HWW_X, opts.HWW_Y, False, opts.LEARN_LOG, randomise=False, seed=10, balanced=False)
+            for xx, yy in tqdm(train_sampler(train_X, train_y)):
+                print(xx, yy)
+                trn_ls, trn_acc, _ = sess.run(
+                    [_trn_loss, _trn_acc, train_op], feed_dict={x_in: xx, y_in: yy})
+                trn_losses.append(trn_ls)
+                trn_accs.append(trn_acc)
 
-    for fname, spec, y in zip(test_files, test_X, test_y):
-        probas = []
-        y_true = []
-        for Xb, yb in test_sampler([spec], [y]):
-            probas.append(pred_fn(Xb))
-            y_true.append(yb)
+            ######################
+            # VALIDATION
+            val_losses = []
+            val_accs = []
 
-        y_pred_prob = np.vstack(probas)
-        y_true = np.hstack(y_true)
-        y_pred = np.argmax(y_pred_prob, axis=1)
+            for xx, yy in test_sampler(test_X, test_y):
+                val_ls, val_acc = sess.run([_test_loss, _test_acc], feed_dict={x_in: xx, y_in: yy})
+                val_losses.append(val_ls)
+                val_accs.append(val_acc)
 
-        with open(predictions_savedir + fname, 'w') as f:
-            pickle.dump([y_true, y_pred_prob], f, -1)
+            print(" %03d :: %02f  -  %02f  -  %02f  -  %02f" % (epoch, np.mean(trn_losses),
+                np.mean(trn_accs), np.mean(val_losses), np.mean(val_accs)))
 
-    # save weights from network
-    param_vals = lasagne.layers.get_all_param_values(net['prob'])
-    with open(results_savedir + "weights_%d.pkl" % TEST_FOLD, 'w') as f:
-        pickle.dump(param_vals, f, -1)
+        #######################
+        # TESTING
+        if small:
+            results_savedir = force_make_dir(logging_dir + 'results_SMALL_TEST/')
+            predictions_savedir = force_make_dir(logging_dir + 'per_file_predictions_SMALL_TEST/')
+        else:
+            results_savedir = force_make_dir(logging_dir + 'results/')
+            predictions_savedir = force_make_dir(logging_dir + 'per_file_predictions/')
+
+        test_sampler = SpecSampler(64, opts.HWW_X, opts.HWW_Y, False, opts.LEARN_LOG, randomise=False, seed=10, balanced=False)
+
+        for fname, spec, y in zip(test_files, test_X, test_y):
+            probas = []
+            y_true = []
+            for Xb, yb in test_sampler([spec], [y]):
+                preds = sess.run(test_output, feed_dict={x_in: Xb})
+                probas.append()
+                y_true.append(yb)
+
+            y_pred_prob = np.vstack(probas)
+            y_true = np.hstack(y_true)
+            y_pred = np.argmax(y_pred_prob, axis=1)
+
+            with open(predictions_savedir + fname, 'w') as f:
+                pickle.dump([y_true, y_pred_prob], f, -1)
+
+        # save weights from network
+        saver.save(sess, results_savedir + "weights_%d.pkl" % TEST_FOLD, global_step=1)
 
 
 def train_large_test_golden(RUN_TYPE, opts):
 
-    print opts.CLASSNAME, RUN_TYPE
+    print(opts.CLASSNAME, RUN_TYPE)
 
     # loading testing data
     # (remember, here we are testing on ALL golden... so it doesn't matter what the test fold is
@@ -177,9 +183,9 @@ if __name__ == '__main__':
 
     TRAINING_DATA = 'large'
 
-    print "Training data: ", TRAINING_DATA
-    for key, val in opts.iteritems():
-        print "   ", key.ljust(20), val
+    print("Training data: ", TRAINING_DATA)
+    for key, val in opts.items():
+        print("   ", key.ljust(20), val)
 
     RUN_TYPE = 'ensemble_train_tmp_' + class_to_use
 

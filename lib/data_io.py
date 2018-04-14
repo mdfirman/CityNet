@@ -1,5 +1,5 @@
 import os
-import cPickle as pickle
+import pickle
 import yaml
 import numpy as np
 from scipy.ndimage.interpolation import zoom
@@ -37,7 +37,7 @@ def load_data_helper(fname, SPEC_TYPE, LEARN_LOG, A, B, is_golden=True):
 
     # load spectrogram and annotations
     spec = pickle.load(open(_specs_dir + SPEC_TYPE + '/' + fname))
-    print _annotations_dir + fname
+    print(_annotations_dir + fname)
     annots, wav, sample_rate = pickle.load(open(_annotations_dir + fname))
 
     # reshape annotations
@@ -96,9 +96,9 @@ def load_large_data(SPEC_TYPE, LEARN_LOG, CLASSNAME, A, B, max_to_load=np.iinfo(
         X.append(spec)
         y.append(annots[CLASSNAME])
 
-    print "Dropped %d files" % num_dropped
-    print "Used %d files" % num_used
-    print "Sites used: %d" % len(sites_used)
+    print("Dropped %d files" % num_dropped)
+    print("Used %d files" % num_used)
+    print("Sites used: %d" % len(sites_used))
 
     height = min(xx.shape[0] for xx in X)
     X = [xx[-height:, :] for xx in X]

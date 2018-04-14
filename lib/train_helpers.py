@@ -1,28 +1,12 @@
 import numpy as np
 import os
 import yaml
-import lasagne
-import theano.tensor as T
+import collections
+import tensorflow as tf
+from tensorflow import layers
+from tensorflow.contrib import slim
 from ml_helpers import minibatch_generators as mbg
 
-from lasagne.layers import InputLayer, DimshuffleLayer
-from lasagne.layers import DenseLayer
-from lasagne.layers import NonlinearityLayer
-from lasagne.layers import DropoutLayer
-try:
-    from lasagne.layers.dnn import Conv2DDNNLayer as ConvLayer
-    from lasagne.layers.dnn import Pool2DDNNLayer as PoolLayer
-except:
-    from lasagne.layers import Conv2DLayer as ConvLayer
-    from lasagne.layers import Pool2DLayer as PoolLayer
-from lasagne.nonlinearities import softmax, very_leaky_rectify as vlr
-import theano
-try:
-    from lasagne.layers import batch_norm
-except:
-    from normalization import batch_norm
-from lasagne.layers import ElemwiseSumLayer, ExpressionLayer, DimshuffleLayer
-import lasagne.layers
 
 # Which parameters are used in the network generation?
 net_params = ['DO_BATCH_NORM', 'NUM_FILTERS', 'NUM_DENSE_UNITS',
@@ -134,120 +118,56 @@ class SpecSampler(object):
                 yield xb, y.astype(np.int32)
 
             else:
-                yield X.astype(np.float32), y.astype(np.int32)
-
-
-class NormalisationLayer(lasagne.layers.MergeLayer):
-    def __init__(self, incomings, **kwargs):
-        super(NormalisationLayer, self).__init__(incomings, **kwargs)
-        # no parameters to define
-
-    def get_output_for(self, input, **kwargs):
-
-        x, medians = input
-        # Subtracting logged median from each channel
-        x = x - medians
-
-        flattened = x.flatten(3)  # BxCxHxW --> BxCxHW
-
-        # Rescaling each channel to be between 0 and 1
-        A = flattened / (flattened.max(2, keepdims=True) + 0.000001)
-        A = A.reshape(x.shape)
-
-        B = x# - medians
-
-        # Whitening each spectrogram
-        C = flattened - flattened.mean(2, keepdims=True)
-        C = C / (C.std(2, keepdims=True) + 0.0000001)
-        C = C.reshape(x.shape)
-
-        # Whitening each row of each spectrogram
-        D = x - x.mean(3, keepdims=True)
-        D = D / (D.std(3, keepdims=True) + 0.0000001)
-
-        return T.concatenate((A, B, C, D), axis=1)
-
-    def get_output_shape_for(self, input_shapes):
-        input_shape = input_shapes[0]
-        return (input_shape[0], 4*input_shape[1], input_shape[2], input_shape[3])
-
-
-class LearnLogLayer(lasagne.layers.Layer):
-    """Learn the parameters of a logarithm log(Ax + B), repeated multiple times...
-
-    Assumes input is of shape None x 1 x H x W"""
-
-    def __init__(self, incoming, num_repeats, A=lasagne.init.Normal(),
-                 B=lasagne.init.Normal(), **kwargs):
-        super(LearnLogLayer, self).__init__(incoming, **kwargs)
-        self.num_repeats = num_repeats
-        self.A = self.add_param(A, (1, num_repeats, 1, 1), name='A')
-        self.B = self.add_param(B, (1, num_repeats, 1, 1), name='B')
-
-    def get_output_for(self, input, **kwargs):
-        # Using sigmoids to contrain A and B. Could use exp if want
-        # unbounded upper limit. Also, this might be undercontrained
-        # right now.
-        _A = T.nnet.sigmoid(self.A) * 0 + 10.0
-        _B = T.nnet.sigmoid(self.B) * 0 + 0.001
-
-        # big hack to make input broadcastable...
-        input = input[:, 0, :, :][:, None, :, :]
-
-        return T.log(_A + _B * input)
-
-    def get_output_shape_for(self, input_shape):
-        return (input_shape[0], self.num_repeats, input_shape[2], input_shape[3])
+                yield X.astype(np.float32).transpose(0, 2, 3, 1), y.astype(np.int32)
 
 
 def create_net(SPEC_HEIGHT, HWW_X, LEARN_LOG, NUM_FILTERS,
     WIGGLE_ROOM, CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM):
 
-    if not DO_BATCH_NORM:
-        batch_norm = lambda x: x
-    else:
-        from lasagne.layers import batch_norm
-
-    channels = 1 if LEARN_LOG else 4
+    channels = 4
 
     # main input layer, then logged
-    net = {}
-    net['input'] = InputLayer((None, channels, SPEC_HEIGHT, HWW_X*2), name='input')
+    net = collections.OrderedDict()
 
-    if LEARN_LOG:
+    net['input'] = tf.placeholder(
+        tf.float32, (None, SPEC_HEIGHT, HWW_X*2, channels), name='input')
 
-        NUM_LOG_CHANNELS = 1
-        net['input_logged'] = LearnLogLayer(net['input'], NUM_LOG_CHANNELS)
-        _A, _B = net['input_logged'].A, net['input_logged'].B
+    print(SPEC_HEIGHT)
 
-        # logging the median and multiplying by -1
-        net['input_med'] = InputLayer((None, channels, SPEC_HEIGHT), name='input_med')
-        net['input_med'] = DimshuffleLayer(net['input_med'], (0, 1, 2, 'x'))
-        net['med_logged'] = LearnLogLayer(net['input_med'], NUM_LOG_CHANNELS, A=_A, B=_B)
 
-        # net['med_logged'] = ExpressionLayer(net['med_logged'], lambda X: -X)
-        #
-        # # summing the logged input with the negative logged median
-        # net['input'] = ElemwiseSumLayer((net['input_logged'], net['med_logged']))
-        #
-        # performing the multiplications
-        net['input'] = NormalisationLayer((net['input_logged'], net['med_logged']))
+    net['conv1_1'] = slim.conv2d(net['input'], NUM_FILTERS, (SPEC_HEIGHT - WIGGLE_ROOM, CONV_FILTER_WIDTH), activation_fn=None)
+    net['conv1_1'] = slim.batch_norm(net['conv1_1'], activation_fn=None)
+    net['conv1_1'] = tf.nn.leaky_relu(net['conv1_1'], alpha=1/3)
 
-    print SPEC_HEIGHT
-    net['conv1_1'] = batch_norm(
-        ConvLayer(net['input'], NUM_FILTERS, (SPEC_HEIGHT - WIGGLE_ROOM, CONV_FILTER_WIDTH), nonlinearity=vlr))
-    # net['pool1'] = PoolLayer(net['conv1_1'], pool_size=(2, 2), stride=(2, 2), mode='max')
-    net['pool1'] = DropoutLayer(net['conv1_1'], p=0.5)
-    net['conv1_2'] = batch_norm(ConvLayer(net['pool1'], NUM_FILTERS, (1, 3), nonlinearity=vlr))
-    W = net['conv1_2'].output_shape[3]
-    net['pool2'] = PoolLayer(net['conv1_2'], pool_size=(1, W), stride=(1, 1), mode='max')
-    net['pool2'] = DropoutLayer(net['pool2'], p=0.5)
+    # not sure if should include this...
+    net['conv1_1'] = slim.max_pool2d(net['conv1_1'], kernel_size=(2, 2), stride=(2, 2))
 
-    net['fc6'] = batch_norm(DenseLayer(net['pool2'], num_units=NUM_DENSE_UNITS, nonlinearity=vlr))
-    net['fc6'] = DropoutLayer(net['fc6'], p=0.5)
-    net['fc7'] = batch_norm(DenseLayer(net['fc6'], num_units=NUM_DENSE_UNITS, nonlinearity=vlr))
-    net['fc7'] = DropoutLayer(net['fc7'], p=0.5)
-    net['fc8'] = DenseLayer(net['fc7'], num_units=2, nonlinearity=None)
-    net['prob'] = NonlinearityLayer(net['fc8'], softmax)
+    net['pool1'] = slim.dropout(net['conv1_1'])
+    net['conv1_2'] = slim.conv2d(net['pool1'], NUM_FILTERS, (1, 3), activation_fn=None)
+    net['conv1_2'] = slim.batch_norm(net['conv1_2'], activation_fn=None)
+    net['conv1_2'] = tf.nn.leaky_relu(net['conv1_2'], alpha=1/3)
+
+    W = net['conv1_2'].shape[1]
+    net['pool2'] = slim.max_pool2d(net['conv1_2'], kernel_size=(W, 1), stride=(1, 1))
+    net['pool2'] = slim.dropout(net['pool2'])
+
+    # todo - some sort of reshape here...
+    net['pool2'] = slim.flatten(net['pool2'])
+
+
+    net['fc6'] = slim.fully_connected(net['pool2'], NUM_DENSE_UNITS, activation_fn=None)
+    net['fc6'] = slim.batch_norm(net['fc6'], activation_fn=None)
+    net['fc6'] = tf.nn.leaky_relu(net['fc6'], alpha=1/3)
+
+    net['fc7'] = slim.dropout(net['fc6'])
+    net['fc7'] = slim.fully_connected(net['fc7'], NUM_DENSE_UNITS, activation_fn=None)
+    net['fc7'] = slim.batch_norm(net['fc7'], activation_fn=None)
+    net['fc7'] = tf.nn.leaky_relu(net['fc7'], alpha=1/3)
+
+    net['fc7'] = slim.dropout(net['fc7'])
+    net['output'] = slim.fully_connected(net['fc7'], 2, activation_fn=None)
+
+    for key, val in net.items():
+        print(key, val.shape)
 
     return net
