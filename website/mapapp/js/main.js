@@ -163,6 +163,7 @@ function initMap() {
 
 };
 
+
 $(document).ready(function(){
   console.log("Loaded")
 
@@ -187,11 +188,12 @@ $(document).ready(function(){
 
   var is_touch_device = ("ontouchstart" in window) || window.DocumentTouch && document instanceof DocumentTouch;
   $('[data-toggle="popover"]').popover({trigger: is_touch_device ? "click focus" : "hover focus"});
-  
+
   var shiftWindow = function() { scrollBy(0, -60) };
   if (location.hash) shiftWindow();
     window.addEventListener("hashchange", shiftWindow);
-  
+
+  google.maps.event.trigger(map, 'resize');
 });
 
-
+google.maps.event.trigger(map, 'resize');
