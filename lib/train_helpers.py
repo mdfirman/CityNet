@@ -1,11 +1,12 @@
 import numpy as np
 import os
+import sys
 import yaml
 import collections
 import tensorflow as tf
 from tensorflow import layers
 from tensorflow.contrib import slim
-from ml_helpers import minibatch_generators as mbg
+import minibatch_generators as mbg
 
 
 # Which parameters are used in the network generation?

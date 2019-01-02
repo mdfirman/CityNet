@@ -15,7 +15,7 @@ import yaml
 sys.path.append('../lib')
 from train_helpers import SpecSampler, force_make_dir, create_net
 import data_io
-from ml_helpers import ui
+import ui
 
 small = True
 
