@@ -1,14 +1,14 @@
 import os
-import wget
 import yaml
 import zipfile
 import numpy as np
 import cPickle as pickle
+from six.moves import urllib
 import matplotlib.pyplot as plt
 import sys
 sys.path.append('lib')
 
-from prediction.classifier import Classifier, HOP_LENGTH
+from prediction.tf_classifier import TFClassifier, HOP_LENGTH
 
 # where to download the pretrained models from
 models_dl_path = 'https://www.dropbox.com/s/hyboxgpnfv94hvr/models.zip?dl=1'
@@ -16,22 +16,23 @@ models_dl_path = 'https://www.dropbox.com/s/hyboxgpnfv94hvr/models.zip?dl=1'
 
 #############################################
 
-print "-> Downloading and unzipping pre-trained model..."
+print("-> Downloading and unzipping pre-trained model...")
 
 if not os.path.exists('models/biotic/network_opts.yaml'):
 
     if not os.path.exists('models/models.zip'):
-        wget.download(models_dl_path, 'models')
+        urllib.request.urlretrieve(models_dl_path, "models/models.zip")
+        # wget.download(models_dl_path, 'models')
 
     with zipfile.ZipFile('models/models.zip', 'r') as zip_ref:
         zip_ref.extractall('models/')
 
-print "-> ...Done"
+print("-> ...Done")
 
 
 ############################################################
 
-print "->  Making predictions for biotic and anthropogenic separately"
+print("->  Making predictions for biotic and anthropogenic separately")
 
 preds = {}
 
@@ -40,32 +41,32 @@ for classifier_type in ['biotic', 'anthrop']:
     with open('models/%s/network_opts.yaml' % classifier_type) as f:
         options = yaml.load(f)
 
-    predictor = Classifier(options, 'models/%s/weights_99.pkl' % classifier_type)
+    predictor = TFClassifier(options, 'models/%s/weights_99.pkl' % classifier_type)
     preds[classifier_type] = predictor.classify('demo/SW154LA-3527_20130705_0909.wav')
 
-print "-> ...Done"
+print("-> ...Done")
 
 
 ############################
 
-print "-> Saving predictions to disk"
+print("-> Saving predictions to disk")
 
 with open('demo/predictions.pkl', 'wb') as f:
     pickle.dump(preds, f, -1)
 
-print "-> ...Done"
+print("-> ...Done")
 
 
 ######################
 
-print "-> Plotting predictions"
+print("-> Plotting predictions")
 
 plt.figure(figsize=(15, 5))
 cols = {'anthrop': 'b', 'biotic': 'g'}
 
 for key, val in preds.items():
     len_in_s = val.shape[0] * HOP_LENGTH / predictor.sample_rate
-    print len_in_s
+    print(len_in_s)
 
     x = np.linspace(0, len_in_s, val.shape[0])
     plt.plot(x, val[:, 1], cols[key], label=key)
@@ -73,8 +74,9 @@ for key, val in preds.items():
     plt.xlabel('Time (s)')
     plt.ylabel('Activity level')
 
-plt.ylim(0, 1.2)
+# plt.ylim(0, 1.2)
+plt.xlim(0, 60)
 plt.legend()
 plt.savefig('demo/predictions.pdf')
 
-print "-> ...Done"
+print("-> ...Done")

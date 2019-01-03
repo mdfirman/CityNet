@@ -25,9 +25,9 @@ N_MELS = 32 # 128
 
 class Classifier(object):
 
-    def __init__(self, opts, weights_path):
+    def __init__(self, weights_path, opts):
         # Create the layers of the neural network, with the same options we used in training
-        self.opts = edict(opts)
+        self.opts = opts.__dict__
 
         net_options = {xx: opts[xx] for xx in train_helpers.net_params}
         net = train_helpers.create_net(SPEC_HEIGHT=N_MELS, **net_options)
@@ -49,11 +49,11 @@ class Classifier(object):
         tic = time()
 
         if loadmethod == 'librosa':
-            # a more correct and robust way - 
+            # a more correct and robust way -
             # this resamples any audio file to 22050Hz
             self.wav, self.sample_rate = librosa.load(wavpath, 22050)
         elif loadmethod == 'wavfile':
-            # a hack for speed - resampling is done assuming raw audio is 
+            # a hack for speed - resampling is done assuming raw audio is
             # sampled at 44100Hz. Not recommended for general use.
             self.sample_rate, self.wav = wavfile.read(open(wavpath))
             self.wav = self.wav[::2] / 32768.0
@@ -65,7 +65,7 @@ class Classifier(object):
         tic = time()
         spec = melspectrogram(self.wav, sr=self.sample_rate, n_fft=N_FFT,
                               hop_length=HOP_LENGTH, n_mels=N_MELS)
-        
+
         spec = np.log(self.opts.A + self.opts.B * spec)
         spec = spec - np.median(spec, axis=1, keepdims=True)
         self.spec = spec.astype(np.float32)
