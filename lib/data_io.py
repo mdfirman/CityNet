@@ -11,9 +11,9 @@ spec_pkl_dir = base + 'extracted/specs/'
 log_dir = base + 'ml_runs/'
 
 # large data
-large_base = yaml.load(open('../CONFIG.yaml'))['large_data']
-large_spec_pkl_dir = large_base + 'specs/'
-large_annotation_pkl_dir = large_base + 'annots/'
+# large_base = yaml.load(open('../CONFIG.yaml'))['large_data']
+# large_spec_pkl_dir = large_base + 'specs/'
+# large_annotation_pkl_dir = large_base + 'annots/'
 
 
 def load_splits(test_fold, large_data=False):
@@ -36,9 +36,9 @@ def load_data_helper(fname, SPEC_TYPE, LEARN_LOG, A, B, is_golden=True):
         _annotations_dir = large_annotation_pkl_dir
 
     # load spectrogram and annotations
-    spec = pickle.load(open(_specs_dir + SPEC_TYPE + '/' + fname))
+    spec = pickle.load(open(_specs_dir + SPEC_TYPE + '/' + fname, 'rb'), encoding='latin1')
     print(_annotations_dir + fname)
-    annots, wav, sample_rate = pickle.load(open(_annotations_dir + fname))
+    annots, wav, sample_rate = pickle.load(open(_annotations_dir + fname, 'rb'), encoding='latin1')
 
     # reshape annotations
     for classname in annots:

@@ -140,10 +140,16 @@ def create_net(weights, SPEC_HEIGHT, HWW_X, LEARN_LOG, NUM_FILTERS,
     channels = 4
     net = collections.OrderedDict()
 
-    bn0 = BatchNormFeedforward("0", *weights[1:5])
-    bn1 = BatchNormFeedforward("1", *weights[6:10])
-    bn2 = BatchNormFeedforward("2", *weights[11:15])
-    bn3 = BatchNormFeedforward("3", *weights[16:20])
+    if weights:
+        bn0 = BatchNormFeedforward("0", *weights[1:5])
+        bn1 = BatchNormFeedforward("1", *weights[6:10])
+        bn2 = BatchNormFeedforward("2", *weights[11:15])
+        bn3 = BatchNormFeedforward("3", *weights[16:20])
+    else:
+        bn0 = lambda x: x
+        bn1 = lambda x: x
+        bn2 = lambda x: x
+        bn3 = lambda x: x
 
     net['input'] = tf.placeholder(
         tf.float32, (None, SPEC_HEIGHT, HWW_X*2, channels), name='input')
@@ -182,6 +188,6 @@ def create_net(weights, SPEC_HEIGHT, HWW_X, LEARN_LOG, NUM_FILTERS,
 
     net['fc8'] = slim.fully_connected(net['fc7'], 2, activation_fn=None)
     # net['fc8'] = tf.nn.leaky_relu(net['fc8'], alpha=1/3)
-    net['fc8'] = tf.nn.softmax(net['fc8'])
+    net['output'] = tf.nn.softmax(net['fc8'])
 
     return net

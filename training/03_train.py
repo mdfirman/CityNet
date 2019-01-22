@@ -4,7 +4,7 @@ assert class_to_use in ['biotic', 'anthrop']
 
 import pickle
 import numpy as np
-
+from IPython import embed
 import tensorflow as tf
 from tensorflow.contrib import slim
 
@@ -17,7 +17,7 @@ from train_helpers import SpecSampler, force_make_dir, create_net
 import data_io
 import ui
 
-small = True
+small = False
 
 
 def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir, opts, TEST_FOLD=99,
@@ -35,7 +35,7 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir, op
     test_sampler = SpecSampler(64, opts.HWW_X, opts.HWW_Y, False, opts.LEARN_LOG, randomise=False, seed=10, balanced=True)
 
     height = train_X[0].shape[0]
-    net = create_net(height, opts.HWW_X, opts.LEARN_LOG, opts.NUM_FILTERS,
+    net = create_net(None, height, opts.HWW_X, opts.LEARN_LOG, opts.NUM_FILTERS,
         opts.WIGGLE_ROOM, opts.CONV_FILTER_WIDTH, opts.NUM_DENSE_UNITS, opts.DO_BATCH_NORM)
 
     y_in = tf.placeholder(tf.int32, (None))
@@ -75,7 +75,6 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir, op
             trn_accs = []
 
             for xx, yy in tqdm(train_sampler(train_X, train_y)):
-                print(xx, yy)
                 trn_ls, trn_acc, _ = sess.run(
                     [_trn_loss, _trn_acc, train_op], feed_dict={x_in: xx, y_in: yy})
                 trn_losses.append(trn_ls)
@@ -110,14 +109,15 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir, op
             y_true = []
             for Xb, yb in test_sampler([spec], [y]):
                 preds = sess.run(test_output, feed_dict={x_in: Xb})
-                probas.append()
+                probas.append(preds)
                 y_true.append(yb)
 
             y_pred_prob = np.vstack(probas)
             y_true = np.hstack(y_true)
             y_pred = np.argmax(y_pred_prob, axis=1)
 
-            with open(predictions_savedir + fname, 'w') as f:
+            print("Saving to {}".format(predictions_savedir))
+            with open(predictions_savedir + fname, 'wb') as f:
                 pickle.dump([y_true, y_pred_prob], f, -1)
 
         # save weights from network
@@ -143,6 +143,38 @@ def train_large_test_golden(RUN_TYPE, opts):
     # loading training data...
     train_X, train_y = data_io.load_large_data(
         opts.SPEC_TYPE, opts.LEARN_LOG, opts.CLASSNAME, opts.A, opts.B, max_to_load=max_to_load)
+
+    for idx in range(opts.ENSEMBLE_MEMBERS):
+        logging_dir = data_io.base + 'predictions/%s/%d/%s/' % (RUN_TYPE, idx, opts.CLASSNAME)
+        force_make_dir(logging_dir)
+        sys.stdout = ui.Logger(logging_dir + 'log.txt')
+
+        opts.height = train_X[0].shape[0]
+        with open(logging_dir + 'network_opts.yaml', 'w') as f:
+            yaml.dump(opts, f, default_flow_style=False)
+
+        train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir, opts)
+
+
+def train_golden(RUN_TYPE, opts):
+
+    print(opts.CLASSNAME, RUN_TYPE)
+
+    # loading testing data
+    # (remember, here we are testing on ALL golden... so it doesn't matter what the test fold is
+    golden_1, golden_2 = data_io.load_splits(test_fold=0)
+    train_files = golden_1 + golden_2
+    test_files = golden_2
+
+    if small:
+        test_files = test_files[:3]
+        train_files = train_files[:3]
+
+    train_X, train_y = data_io.load_data(
+        train_files, opts.SPEC_TYPE, opts.LEARN_LOG, opts.CLASSNAME, opts.A, opts.B)
+
+    test_X, test_y = data_io.load_data(
+        test_files, opts.SPEC_TYPE, opts.LEARN_LOG, opts.CLASSNAME, opts.A, opts.B)
 
     for idx in range(opts.ENSEMBLE_MEMBERS):
         logging_dir = data_io.base + 'predictions/%s/%d/%s/' % (RUN_TYPE, idx, opts.CLASSNAME)
@@ -189,4 +221,4 @@ if __name__ == '__main__':
 
     RUN_TYPE = 'ensemble_train_tmp_' + class_to_use
 
-    train_large_test_golden(RUN_TYPE, opts)
+    train_golden(RUN_TYPE, opts)
