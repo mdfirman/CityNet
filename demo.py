@@ -11,7 +11,7 @@ sys.path.append('lib')
 from prediction.tf_classifier import TFClassifier, HOP_LENGTH
 
 # where to download the pretrained models from
-models_dl_path = 'https://www.dropbox.com/s/6wrwtmpkcrjkxsh/tf_models.zip?dl=1'
+models_dl_path = 'https://www.dropbox.com/s/50ketdmtn6bd1oa/tf_models.zip?dl=1'
 
 
 #############################################
