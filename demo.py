@@ -2,7 +2,7 @@ import os
 import yaml
 import zipfile
 import numpy as np
-import cPickle as pickle
+import pickle
 from six.moves import urllib
 import matplotlib.pyplot as plt
 import sys
@@ -11,21 +11,24 @@ sys.path.append('lib')
 from prediction.tf_classifier import TFClassifier, HOP_LENGTH
 
 # where to download the pretrained models from
-models_dl_path = 'https://www.dropbox.com/s/hyboxgpnfv94hvr/models.zip?dl=1'
+models_dl_path = 'https://www.dropbox.com/s/6wrwtmpkcrjkxsh/tf_models.zip?dl=1'
 
 
 #############################################
 
 print("-> Downloading and unzipping pre-trained model...")
 
-if not os.path.exists('models/biotic/network_opts.yaml'):
+if not os.path.exists('tf_models/biotic/network_opts.yaml'):
 
-    if not os.path.exists('models/models.zip'):
-        urllib.request.urlretrieve(models_dl_path, "models/models.zip")
+    if not os.path.isdir("tf_models"):
+        os.makedirs("tf_models")
+
+    if not os.path.exists('tf_models/models.zip'):
+        urllib.request.urlretrieve(models_dl_path, "tf_models/models.zip")
         # wget.download(models_dl_path, 'models')
 
-    with zipfile.ZipFile('models/models.zip', 'r') as zip_ref:
-        zip_ref.extractall('models/')
+    with zipfile.ZipFile('tf_models/models.zip', 'r') as zip_ref:
+        zip_ref.extractall('./')
 
 print("-> ...Done")
 
@@ -38,14 +41,15 @@ preds = {}
 
 for classifier_type in ['biotic', 'anthrop']:
 
-    with open('models/%s/network_opts.yaml' % classifier_type) as f:
+    with open('tf_models/%s/network_opts.yaml' % classifier_type) as f:
         options = yaml.load(f)
 
-    predictor = TFClassifier(options, 'models/%s/weights_99.pkl' % classifier_type)
+    model_path = 'tf_models/%s/weights_99.pkl-1' % classifier_type
+
+    predictor = TFClassifier(options, model_path)
     preds[classifier_type] = predictor.classify('demo/SW154LA-3527_20130705_0909.wav')
 
 print("-> ...Done")
-
 
 ############################
 

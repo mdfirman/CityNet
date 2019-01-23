@@ -24,36 +24,19 @@ N_MELS = 32 # 128
 class TFClassifier(object):
 
     def __init__(self, opts, weights_path):
-        # Create the layers of the neural network, with the same options we used in training
+        """Create the layers of the neural network, with the same options we used in training"""
         self.opts = namedtuple("opts", opts.keys())(*opts.values())
         tf.reset_default_graph()
 
-        weights = pickle.load(open(weights_path, 'rb'))#, encoding='latin1')
-
         net_options = {xx: opts[xx] for xx in train_helpers.net_params}
-        self.net = train_helpers.create_net(weights, SPEC_HEIGHT=N_MELS, **net_options)
+        self.net = train_helpers.create_net(SPEC_HEIGHT=N_MELS, **net_options)
 
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
 
-        # mapping from the lasagne list of variables to the tensorflow names
-        var_mapper = {
-            "Conv/weights:0": weights[0],
-            "Conv_1/weights:0": weights[5],
-            "fully_connected/weights:0": weights[10],
-            "fully_connected_1/weights:0": weights[15],
-            "fully_connected_2/weights:0": weights[20],
-            "fully_connected_2/biases:0": weights[21]
-        }
-
-        for var in tf.global_variables():
-            if var.name in var_mapper:
-                value = var_mapper[var.name]
-                if len(value.shape) == 4:
-                    # filter wrangling to convert theano to tensorflow
-                    value = value.transpose(2, 3, 1, 0)[::-1, ::-1]
-
-                self.sess.run(var.assign(value))
+        train_saver = tf.train.Saver()
+        print("Loading from {}".format(weights_path))
+        train_saver.restore(self.sess, weights_path)
 
         # Create an object which will iterate over the test spectrograms appropriately
         self.test_sampler = train_helpers.SpecSampler(
@@ -100,11 +83,10 @@ class TFClassifier(object):
         tic = time()
         probas = []
         for Xb, _ in self.test_sampler([self.spec], [labels]):
-            print(Xb.shape)
             pred = self.sess.run(
-                self.net['fc8'],
+                self.net['output'],
                 feed_dict={self.net['input']: Xb})
-            probas.append(pred[0, 0])
-        print "Took %0.3fs to classify" % (time() - tic)
+            probas.append(pred)
+        print("Took %0.3fs to classify" % (time() - tic))
 
         return np.vstack(probas)

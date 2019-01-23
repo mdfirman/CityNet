@@ -122,53 +122,27 @@ class SpecSampler(object):
                 yield X.astype(np.float32).transpose(0, 2, 3, 1), y.astype(np.int32)
 
 
-class BatchNormFeedforward(tf.keras.layers.Layer):
-    def __init__(self, name, beta, gamma, mean, inv_std):
-        super(BatchNormFeedforward, self).__init__()
-        self.bn_mean_0 = tf.get_variable("bn_mean_" + name, initializer=mean[None, None, None, :])
-        self.inv_std_0 = tf.get_variable("inv_std_" + name, initializer=inv_std[None, None, None, :])
-        self.gamma_0 = tf.get_variable("gamma_" + name, initializer=gamma[None, None, None, :])
-        self.beta_0 = tf.get_variable("beta_" + name, initializer=beta[None, None, None, :])
-
-    def call(self, input):
-        return (input - self.bn_mean_0) * (self.gamma_0 * self.inv_std_0) + self.beta_0
-
-
-def create_net(weights, SPEC_HEIGHT, HWW_X, LEARN_LOG, NUM_FILTERS,
+def create_net(SPEC_HEIGHT, HWW_X, LEARN_LOG, NUM_FILTERS,
     WIGGLE_ROOM, CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM):
 
     channels = 4
     net = collections.OrderedDict()
-
-    if weights:
-        bn0 = BatchNormFeedforward("0", *weights[1:5])
-        bn1 = BatchNormFeedforward("1", *weights[6:10])
-        bn2 = BatchNormFeedforward("2", *weights[11:15])
-        bn3 = BatchNormFeedforward("3", *weights[16:20])
-    else:
-        bn0 = lambda x: x
-        bn1 = lambda x: x
-        bn2 = lambda x: x
-        bn3 = lambda x: x
 
     net['input'] = tf.placeholder(
         tf.float32, (None, SPEC_HEIGHT, HWW_X*2, channels), name='input')
     net['conv1_1'] = slim.conv2d(
         net['input'], NUM_FILTERS, (SPEC_HEIGHT - WIGGLE_ROOM, CONV_FILTER_WIDTH),
         padding='valid', activation_fn=None, biases_initializer=None)
-    net['conv1_1'] = bn0(net['conv1_1'])
     net['conv1_1'] = tf.nn.leaky_relu(net['conv1_1'], alpha=1/3)
 
     net['conv1_2'] = slim.conv2d(
         net['conv1_1'], NUM_FILTERS, (1, 3), padding='valid',
         activation_fn=None, biases_initializer=None)
-    net['conv1_2'] = bn1(net['conv1_2'])
     net['conv1_2'] = tf.nn.leaky_relu(net['conv1_2'], alpha=1/3)
 
     W = net['conv1_2'].shape[2]
     net['pool2'] = slim.max_pool2d(
         net['conv1_2'], kernel_size=(1, W), stride=(1, 1))
-
 
     net['pool2'] = tf.transpose(net['pool2'], (0, 3, 2, 1))
     net['pool2_flat'] = slim.flatten(net['pool2'])
@@ -176,15 +150,12 @@ def create_net(weights, SPEC_HEIGHT, HWW_X, LEARN_LOG, NUM_FILTERS,
     net['fc6'] = slim.fully_connected(
         net['pool2_flat'], NUM_DENSE_UNITS,
         activation_fn=None, biases_initializer=None)
-    net['fc6'] = bn2(net['fc6'])
     net['fc6'] = tf.nn.leaky_relu(net['fc6'], alpha=1/3)
 
     net['fc7'] = slim.fully_connected(
         net['fc6'], NUM_DENSE_UNITS,
         activation_fn=None, biases_initializer=None)
-    net['fc7'] = bn3(net['fc7'])
     net['fc7'] = tf.nn.leaky_relu(net['fc7'], alpha=1/3)
-
 
     net['fc8'] = slim.fully_connected(net['fc7'], 2, activation_fn=None)
     # net['fc8'] = tf.nn.leaky_relu(net['fc8'], alpha=1/3)

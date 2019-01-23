@@ -35,15 +35,15 @@ def train_and_test(train_X, test_X, train_y, test_y, test_files, logging_dir, op
     test_sampler = SpecSampler(64, opts.HWW_X, opts.HWW_Y, False, opts.LEARN_LOG, randomise=False, seed=10, balanced=True)
 
     height = train_X[0].shape[0]
-    net = create_net(None, height, opts.HWW_X, opts.LEARN_LOG, opts.NUM_FILTERS,
+    net = create_net(height, opts.HWW_X, opts.LEARN_LOG, opts.NUM_FILTERS,
         opts.WIGGLE_ROOM, opts.CONV_FILTER_WIDTH, opts.NUM_DENSE_UNITS, opts.DO_BATCH_NORM)
 
     y_in = tf.placeholder(tf.int32, (None))
     x_in = net['input']
 
     print("todo - fix this up...")
-    trn_output = net['output']
-    test_output = net['output']
+    trn_output = net['fc8']
+    test_output = net['fc8']
 
     _trn_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
         logits=trn_output, labels=y_in))
@@ -191,7 +191,7 @@ def train_golden(RUN_TYPE, opts):
 if __name__ == '__main__':
     opts = edict(dict(
         SPEC_TYPE = 'mel',
-        ENSEMBLE_MEMBERS = 5,
+        ENSEMBLE_MEMBERS = 1,
 
         # data preprocessing options
         HWW_X = 10,
@@ -219,6 +219,6 @@ if __name__ == '__main__':
     for key, val in opts.items():
         print("   ", key.ljust(20), val)
 
-    RUN_TYPE = 'ensemble_train_tmp_' + class_to_use
+    RUN_TYPE = 'train_overlap_split_' + class_to_use
 
     train_golden(RUN_TYPE, opts)
