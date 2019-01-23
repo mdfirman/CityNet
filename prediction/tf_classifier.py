@@ -89,4 +89,4 @@ class TFClassifier(object):
             probas.append(pred)
         print("Took %0.3fs to classify" % (time() - tic))
 
-        return np.vstack(probas)
+        return np.vstack(probas)[:, 1]

@@ -73,7 +73,7 @@ for key, val in preds.items():
     print(len_in_s)
 
     x = np.linspace(0, len_in_s, val.shape[0])
-    plt.plot(x, val[:, 1], cols[key], label=key)
+    plt.plot(x, val, cols[key], label=key)
 
     plt.xlabel('Time (s)')
     plt.ylabel('Activity level')

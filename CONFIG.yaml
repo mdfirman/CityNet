@@ -1,2 +1,4 @@
 base_dir: '/media/michael/Engage/data/audio/alison_data/golden_set/'
 large_data:  '/media/michael/Engage/data/audio/alison_data/large_dataset/'
+base_dir: '/Users/mfirman/data/engage/alison_data/golden_set/'
+large_data:  '/media/michael/Engage/data/audio/alison_data/large_dataset/'
