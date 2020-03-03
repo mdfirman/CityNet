@@ -47,7 +47,7 @@ for classifier_type in ['biotic', 'anthrop']:
     model_path = 'tf_models/%s/weights_99.pkl-1' % classifier_type
 
     predictor = TFClassifier(options, model_path)
-    preds[classifier_type] = predictor.classify('demo/SW154LA-3527_20130705_0909.wav')
+    preds[classifier_type] = predictor.classify("demo/NW23SH-13548_20150811_16300021.wav")
 
 print("-> ...Done")
 

@@ -15,7 +15,7 @@ import yaml
 sys.path.append('../lib')
 from train_helpers import SpecSampler, force_make_dir, create_net
 import data_io
-import ui
+# import ui
 
 small = False
 
@@ -147,7 +147,7 @@ def train_large_test_golden(RUN_TYPE, opts):
     for idx in range(opts.ENSEMBLE_MEMBERS):
         logging_dir = data_io.base + 'predictions/%s/%d/%s/' % (RUN_TYPE, idx, opts.CLASSNAME)
         force_make_dir(logging_dir)
-        sys.stdout = ui.Logger(logging_dir + 'log.txt')
+        # sys.stdout = ui.Logger(logging_dir + 'log.txt')
 
         opts.height = train_X[0].shape[0]
         with open(logging_dir + 'network_opts.yaml', 'w') as f:
@@ -179,7 +179,7 @@ def train_golden(RUN_TYPE, opts):
     for idx in range(opts.ENSEMBLE_MEMBERS):
         logging_dir = data_io.base + 'predictions/%s/%d/%s/' % (RUN_TYPE, idx, opts.CLASSNAME)
         force_make_dir(logging_dir)
-        sys.stdout = ui.Logger(logging_dir + 'log.txt')
+        # sys.stdout = ui.Logger(logging_dir + 'log.txt')
 
         opts.height = train_X[0].shape[0]
         with open(logging_dir + 'network_opts.yaml', 'w') as f:
