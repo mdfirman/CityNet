@@ -1,11 +1,8 @@
 import numpy as np
 import os
-import sys
-import yaml
 import collections
-import tensorflow as tf
-from tensorflow import layers
-from tensorflow.contrib import slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 import minibatch_generators as mbg
 
 
@@ -124,6 +121,8 @@ class SpecSampler(object):
 
 def create_net(SPEC_HEIGHT, HWW_X, LEARN_LOG, NUM_FILTERS,
     WIGGLE_ROOM, CONV_FILTER_WIDTH, NUM_DENSE_UNITS, DO_BATCH_NORM):
+
+    tf.compat.v1.disable_eager_execution()
 
     channels = 4
     net = collections.OrderedDict()

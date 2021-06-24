@@ -1,11 +1,7 @@
 import os
 import sys
 import yaml
-import zipfile
-import numpy as np
 import pickle
-from six.moves import urllib
-import matplotlib.pyplot as plt
 import sys
 sys.path.append('lib')
 
@@ -29,7 +25,7 @@ preds = {}
 for classifier_type in ['biotic', 'anthrop']:
 
     with open('tf_models/%s/network_opts.yaml' % classifier_type) as f:
-        options = yaml.load(f)
+        options = yaml.full_load(f)
 
     model_path = 'tf_models/%s/weights_99.pkl-1' % classifier_type
 

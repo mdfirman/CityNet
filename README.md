@@ -25,25 +25,14 @@ An overview of predictions of biotic and anthropogenic activity on recordings of
 
 ## Requirements
 
-The system has been tested using:
+The system has been tested using the dependencies in `environment.yml`. Our code works with python 3.
 
-- `Ubuntu 16.04`
-- `python 2.7`
-- The `anaconda` distribution (see [here](https://www.anaconda.com/download/) for download details).
+You can create an environment with all the dependencies installed using:
 
-Run the following commands to get suitable versions of the required libraries:
-
-    pip install -r https://raw.githubusercontent.com/Lasagne/Lasagne/v0.1/requirements.txt
-    pip install Lasagne==0.1
-    pip install --upgrade https://github.com/Lasagne/Lasagne/archive/master.zip
-    pip install nolearn
-    pip install librosa
-    pip install easydict
-    pip install tqdm
-    pip install git+git://github.com/mdfirman/ml_helpers.git@master
-
-For training and testing we used a 2GB NVIDIA GPU. The computation requirements for classification are pretty low though, so a GPU should not be required.
-
+```bash
+conda env create -f environment.yml -n citynet
+conda activate citynet
+```
 
 ## How to classify a new audio file with CityNet
 
@@ -51,6 +40,14 @@ For training and testing we used a 2GB NVIDIA GPU. The computation requirements 
 - Predictions should be saved in the folder `demo`.
 - Your newly-created file `demo/prediction.pdf` should look identical to the provided file `demo/reference_prediction.pdf`:
 
+## How to classify multiple audio files
 
+You can run CityNet on a folder of audio files with:
 
-Editing `demo.py` should allow you to classify your own audio files.
+```bash
+python multi_predict.py path/to/audio/files
+```
+
+## Hardware requirements
+
+For training and testing we used a 2GB NVIDIA GPU. The computation requirements for classification are pretty low though, so a GPU should not be required.

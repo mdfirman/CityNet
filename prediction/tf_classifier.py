@@ -1,12 +1,9 @@
-import os
 import sys
-import yaml
 import numpy as np
 from time import time
-import pickle
 from collections import namedtuple
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import librosa
 from librosa.feature import melspectrogram
 from scipy.io import wavfile
