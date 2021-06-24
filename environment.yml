@@ -1,0 +1,16 @@
+name: manydepth
+channels:
+  - default
+  - conda-forge
+dependencies:
+  - python=3.6
+  - numpy=1.19.5
+  - tensorflow=2.4.1
+  - pip
+  - pip:
+    - pyyaml
+    - tqdm==4.57.0
+    - librosa=0.8.1
+    - IPython
+    - tf_slim=1.1.0
+    - matplotlib==3.3.4
