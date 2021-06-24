@@ -48,6 +48,9 @@ You can run CityNet on a folder of audio files with:
 python multi_predict.py path/to/audio/files
 ```
 
+This will save summaries of what is found in each wav file found to `prediction_summaries.csv`.
+
+
 ## Hardware requirements
 
 For training and testing we used a 2GB NVIDIA GPU. The computation requirements for classification are pretty low though, so a GPU should not be required.
