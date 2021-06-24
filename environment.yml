@@ -1,4 +1,4 @@
-name: manydepth
+name: citynet
 channels:
   - default
   - conda-forge
@@ -10,7 +10,6 @@ dependencies:
   - pip:
     - pyyaml
     - tqdm==4.57.0
-    - librosa=0.8.1
-    - IPython
-    - tf_slim=1.1.0
+    - librosa==0.8.1
+    - tf_slim==1.1.0
     - matplotlib==3.3.4
