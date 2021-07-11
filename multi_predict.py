@@ -2,6 +2,8 @@ import os
 import sys
 import yaml
 import pickle
+import numpy as np
+import matplotlib.pyplot as plt
 import sys
 sys.path.append('lib')
 
@@ -34,7 +36,7 @@ for classifier_type in ['biotic', 'anthrop']:
 
     for count, filename in enumerate(filenames):
 
-        if not filename.endswith('.wav'):
+        if not filename.lower().endswith('.wav'):
             print("Skipping {}, not a wav file".format(filename))
             continue
 
@@ -66,5 +68,37 @@ with open("prediction_summaries.csv", "w") as f:
             preds[fname]['biotic'].mean(),
             preds[fname]['anthrop'].mean()))
 
+
+######################
+
+plots_savedir = "plots"
+print("-> Saving prediction plots to {}".format(plots_savedir))
+
+os.makedirs(plots_savedir, exist_ok=True)
+cols = {'anthrop': 'b', 'biotic': 'g'}
+
+for fname, this_fname_preds in preds.items():
+    plt.figure(figsize=(15, 5))
+
+    for key, val in this_fname_preds.items():
+        len_in_s = val.shape[0] * HOP_LENGTH / predictor.sample_rate
+        print(len_in_s)
+
+        x = np.linspace(0, len_in_s, val.shape[0])
+        plt.plot(x, val, cols[key], label=key)
+
+        plt.xlabel('Time (s)')
+        plt.ylabel('Activity level')
+
+    plt.ylim(0, 1.2)
+    plt.xlim(0, 60)
+    plt.legend()
+    plt.title(fname)
+
+    save_fname = os.path.splitext(fname)[0]
+    plt.savefig(os.path.join(plots_savedir, save_fname))
+    plt.close()
+
+######################
 
 print("-> ...Done")
