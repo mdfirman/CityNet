@@ -46,7 +46,7 @@ def load_annotations(fname, labels_dir=labels_dir, wav_dir=wav_dir):
     blank_snippets = []
 
     # load file and convert to spectrogram
-    wav, sample_rate = librosa.load(wav_dir + fname, 22050)
+    wav, sample_rate = librosa.load(wav_dir + fname, sr=22050)
 
     # create label vector...
     biotic = 0 * wav

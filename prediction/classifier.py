@@ -51,7 +51,7 @@ class Classifier(object):
         if loadmethod == 'librosa':
             # a more correct and robust way -
             # this resamples any audio file to 22050Hz
-            self.wav, self.sample_rate = librosa.load(wavpath, 22050)
+            self.wav, self.sample_rate = librosa.load(wavpath, sr=22050)
         elif loadmethod == 'wavfile':
             # a hack for speed - resampling is done assuming raw audio is
             # sampled at 44100Hz. Not recommended for general use.
@@ -63,7 +63,7 @@ class Classifier(object):
 
     def compute_spec(self):
         tic = time()
-        spec = melspectrogram(self.wav, sr=self.sample_rate, n_fft=N_FFT,
+        spec = melspectrogram(y=self.wav, sr=self.sample_rate, n_fft=N_FFT,
                               hop_length=HOP_LENGTH, n_mels=N_MELS)
 
         spec = np.log(self.opts.A + self.opts.B * spec)
